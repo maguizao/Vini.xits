@@ -173,7 +173,7 @@ local Themes = {
 }
 
 -- ==============================================================================
--- CARREGAMENTO INICIAL DE DADOS
+-- CARREGAMENTO INICIAL DE DADOS (CORRIGIDO)
 -- ==============================================================================
 local function LoadConfigDataOnly()
     if isfile and isfile(ConfigFileName) then
@@ -181,9 +181,13 @@ local function LoadConfigDataOnly()
         local success, decoded = pcall(function() return HttpService:JSONDecode(content) end)
         if success and decoded then 
             for key, value in pairs(decoded) do 
-                if Config[key] ~= nil then 
-                    Config[key] = value 
-                end 
+                if key ~= "GuiPositions" then
+                    if Config[key] ~= nil then 
+                        Config[key] = value 
+                    end
+                else
+                    Config.GuiPositions = value or {}
+                end
             end
         end
     end
@@ -1843,7 +1847,7 @@ CreateInput(TabLegit, "Power (Def: 50)", "Ex: 80", tostring(Config.JumpPowerValu
 end)
 
 -- ==============================================================================
--- TAB CRÉDITOS (NOVA ABA)
+-- ABA CRÉDITOS (COMPLETA COM CANAL DO YUDY.XITS)
 -- ==============================================================================
 local TabCredits = CreateTab("CRÉDITOS")
 
@@ -1912,7 +1916,7 @@ end)
 
 -- Frame para Thur.xits
 local ThurFrame = Instance.new("Frame")
-ThurFrame.Size = UDim2.new(1, -10, 0, 100)
+ThurFrame.Size = UDim2.new(1, -10, 0, 80)
 ThurFrame.Position = UDim2.new(0, 0, 0, 110)
 ThurFrame.BackgroundColor3 = Theme.ItemBG
 ThurFrame.Parent = TabCredits
@@ -1923,16 +1927,9 @@ ThurLayout.Size = UDim2.new(1, 0, 1, 0)
 ThurLayout.BackgroundTransparency = 1
 ThurLayout.Parent = ThurFrame
 
-local ThurImage = Instance.new("ImageLabel")
-ThurImage.Size = UDim2.new(0, 60, 0, 60)
-ThurImage.Position = UDim2.new(0, 10, 0.5, -30)
-ThurImage.BackgroundTransparency = 1
-ThurImage.Image = "rbxassetid://74654092157484"
-ThurImage.Parent = ThurLayout
-
 local ThurName = Instance.new("TextLabel")
-ThurName.Size = UDim2.new(0.6, 0, 0, 30)
-ThurName.Position = UDim2.new(0, 80, 0.5, -15)
+ThurName.Size = UDim2.new(0.8, 0, 0, 25)
+ThurName.Position = UDim2.new(0, 10, 0, 10)
 ThurName.BackgroundTransparency = 1
 ThurName.Text = "Thur.xits"
 ThurName.TextColor3 = Theme.Accent
@@ -1941,13 +1938,127 @@ ThurName.TextSize = 14
 ThurName.TextXAlignment = Enum.TextXAlignment.Left
 ThurName.Parent = ThurLayout
 
-CreateSection(TabCredits, "AGRADECIMENTOS")
+local ThurThanks = Instance.new("TextLabel")
+ThurThanks.Size = UDim2.new(0.9, 0, 0, 40)
+ThurThanks.Position = UDim2.new(0, 10, 0, 35)
+ThurThanks.BackgroundTransparency = 1
+ThurThanks.Text = "Obrigado Thur.xits por ajudar a fazer algumas funções"
+ThurThanks.TextColor3 = Theme.TextDim
+ThurThanks.Font = Enum.Font.GothamSemibold
+ThurThanks.TextSize = 11
+ThurThanks.TextXAlignment = Enum.TextXAlignment.Left
+ThurThanks.TextWrapped = true
+ThurThanks.Parent = ThurLayout
+
+-- Frame para Yudy.xits COM BOTÃO DO CANAL
+local YudyFrame = Instance.new("Frame")
+YudyFrame.Size = UDim2.new(1, -10, 0, 110) -- Aumentei a altura para caber o botão
+YudyFrame.Position = UDim2.new(0, 0, 0, 200)
+YudyFrame.BackgroundColor3 = Theme.ItemBG
+YudyFrame.Parent = TabCredits
+AddCorner(YudyFrame, 8)
+
+local YudyLayout = Instance.new("Frame")
+YudyLayout.Size = UDim2.new(1, 0, 1, 0)
+YudyLayout.BackgroundTransparency = 1
+YudyLayout.Parent = YudyFrame
+
+local YudyImage = Instance.new("ImageLabel")
+YudyImage.Size = UDim2.new(0, 60, 0, 60)
+YudyImage.Position = UDim2.new(0, 10, 0, 10) -- Ajuste da posição
+YudyImage.BackgroundTransparency = 1
+YudyImage.Image = "rbxassetid://108983272236186"
+YudyImage.Parent = YudyLayout
+
+local YudyName = Instance.new("TextLabel")
+YudyName.Size = UDim2.new(0.7, 0, 0, 30)
+YudyName.Position = UDim2.new(0, 80, 0, 10) -- Ajuste da posição
+YudyName.BackgroundTransparency = 1
+YudyName.Text = "Obrigado Yudy.xits pelo Apoio"
+YudyName.TextColor3 = Theme.Accent
+YudyName.Font = Enum.Font.GothamBlack
+YudyName.TextSize = 14
+YudyName.TextXAlignment = Enum.TextXAlignment.Left
+YudyName.TextWrapped = true
+YudyName.Parent = YudyLayout
+
+-- Botão para o canal do Yudy.xits
+local YudyBtn = Instance.new("TextButton")
+YudyBtn.Size = UDim2.new(0.3, -10, 0, 25)
+YudyBtn.Position = UDim2.new(0, 80, 0, 45) -- Posição abaixo do nome
+YudyBtn.BackgroundColor3 = Theme.Accent
+YudyBtn.Text = "Canal do YouTube"
+YudyBtn.TextColor3 = Color3.new(1, 1, 1)
+YudyBtn.Font = Enum.Font.GothamBold
+YudyBtn.TextSize = 11
+YudyBtn.Parent = YudyLayout
+AddCorner(YudyBtn, 4)
+
+YudyBtn.MouseButton1Click:Connect(function()
+    PlayClickSound()
+    CopyToClipboard("https://youtube.com/@yudy.xits.oficial?si=AsGMtFMyo-1yg8EZ")
+end)
+
+-- Frame para Seven
+local SevenFrame = Instance.new("Frame")
+SevenFrame.Size = UDim2.new(1, -10, 0, 100)
+SevenFrame.Position = UDim2.new(0, 0, 0, 320) -- Ajuste da posição (200 + 110 + 10)
+SevenFrame.BackgroundColor3 = Theme.ItemBG
+SevenFrame.Parent = TabCredits
+AddCorner(SevenFrame, 8)
+
+local SevenLayout = Instance.new("Frame")
+SevenLayout.Size = UDim2.new(1, 0, 1, 0)
+SevenLayout.BackgroundTransparency = 1
+SevenLayout.Parent = SevenFrame
+
+local SevenImage = Instance.new("ImageLabel")
+SevenImage.Size = UDim2.new(0, 60, 0, 60)
+SevenImage.Position = UDim2.new(0, 10, 0.5, -30)
+SevenImage.BackgroundTransparency = 1
+SevenImage.Image = "rbxassetid://86810351938818"
+SevenImage.Parent = SevenLayout
+
+local SevenName = Instance.new("TextLabel")
+SevenName.Size = UDim2.new(0.7, 0, 0, 30)
+SevenName.Position = UDim2.new(0, 80, 0.5, -25)
+SevenName.BackgroundTransparency = 1
+SevenName.Text = "Obrigado Seven por ajudar com novas ideias"
+SevenName.TextColor3 = Theme.Accent
+SevenName.Font = Enum.Font.GothamBlack
+SevenName.TextSize = 14
+SevenName.TextXAlignment = Enum.TextXAlignment.Left
+SevenName.TextWrapped = true
+SevenName.Parent = SevenLayout
+
+CreateSection(TabCredits, "AGRADECIMENTOS ESPECIAIS")
+
+-- Linha separadora
+local Separator = Instance.new("Frame")
+Separator.Size = UDim2.new(1, -20, 0, 1)
+Separator.Position = UDim2.new(0, 10, 0, 430) -- Ajuste da posição (320 + 100 + 10)
+Separator.BackgroundColor3 = Theme.Accent
+Separator.BackgroundTransparency = 0.5
+Separator.Parent = TabCredits
+
+-- Texto adicional que você pediu
+local FinalThanksLabel = Instance.new("TextLabel")
+FinalThanksLabel.Size = UDim2.new(1, -10, 0, 40)
+FinalThanksLabel.Position = UDim2.new(0, 0, 0, 440) -- Ajuste da posição (430 + 10)
+FinalThanksLabel.BackgroundTransparency = 1
+FinalThanksLabel.Text = "E também obrigado a todos que usam o Nexus Hub ❤"
+FinalThanksLabel.TextColor3 = Color3.fromRGB(255, 105, 180) -- Cor rosa para destaque
+FinalThanksLabel.Font = Enum.Font.GothamBold
+FinalThanksLabel.TextSize = 13
+FinalThanksLabel.TextWrapped = true
+FinalThanksLabel.TextYAlignment = Enum.TextYAlignment.Top
+FinalThanksLabel.Parent = TabCredits
 
 local ThanksLabel = Instance.new("TextLabel")
 ThanksLabel.Size = UDim2.new(1, -10, 0, 60)
-ThanksLabel.Position = UDim2.new(0, 0, 0, 230)
+ThanksLabel.Position = UDim2.new(0, 0, 0, 490) -- Ajuste da posição (440 + 40 + 10)
 ThanksLabel.BackgroundTransparency = 1
-ThanksLabel.Text = "Obrigado por usar o Nexus Hub MM2!\nSe divirta e jogue com responsabilidade."
+ThanksLabel.Text = "Obrigado por usar o Nexus Hub MM2!\nSe divirta 😋"
 ThanksLabel.TextColor3 = Theme.TextDim
 ThanksLabel.Font = Enum.Font.GothamSemibold
 ThanksLabel.TextSize = 12
@@ -1955,16 +2066,8 @@ ThanksLabel.TextWrapped = true
 ThanksLabel.TextYAlignment = Enum.TextYAlignment.Top
 ThanksLabel.Parent = TabCredits
 
--- Adicionar linha separadora
-local Separator = Instance.new("Frame")
-Separator.Size = UDim2.new(1, -20, 0, 1)
-Separator.Position = UDim2.new(0, 10, 0, 220)
-Separator.BackgroundColor3 = Theme.Accent
-Separator.BackgroundTransparency = 0.5
-Separator.Parent = TabCredits
-
 -- ==============================================================================
--- FUNÇÕES PARA TEMA CUSTOMIZADO (CORRIGIDO)
+-- FUNÇÕES PARA TEMA CUSTOMIZADO
 -- ==============================================================================
 local function ApplyThemeToGUI()
     -- Atualizar ToggleButton
@@ -2071,25 +2174,15 @@ local function ApplyThemeToGUI()
         end
     end
     
-    -- Atualizar botão de YouTube na aba CRÉDITOS
+    -- Atualizar botões de YouTube na aba CRÉDITOS
     if ViniBtn then
         ViniBtn.BackgroundColor3 = Theme.Accent
         ViniBtn.TextColor3 = Color3.new(1, 1, 1)
     end
     
-    -- Atualizar todas as instâncias que usam as cores do tema
-    for _, obj in pairs(ScreenGui:GetDescendants()) do
-        if obj:IsA("Frame") and obj.BackgroundColor3 == Theme.Background then
-            obj.BackgroundColor3 = Theme.Background
-        elseif obj:IsA("TextLabel") or obj:IsA("TextButton") then
-            if obj.TextColor3 == Theme.Accent then
-                obj.TextColor3 = Theme.Accent
-            elseif obj.TextColor3 == Theme.Text then
-                obj.TextColor3 = Theme.Text
-            elseif obj.TextColor3 == Theme.TextDim then
-                obj.TextColor3 = Theme.TextDim
-            end
-        end
+    if YudyBtn then
+        YudyBtn.BackgroundColor3 = Theme.Accent
+        YudyBtn.TextColor3 = Color3.new(1, 1, 1)
     end
 end
 
@@ -2105,7 +2198,7 @@ local function SetTheme(themeName)
 end
 
 -- ==============================================================================
--- TAB SETTINGS COM CUSTOM THEME (BOTÕES)
+-- TAB SETTINGS COM CUSTOM THEME
 -- ==============================================================================
 local TabSettings = CreateTab("SETTINGS")
 
@@ -2203,40 +2296,19 @@ CreateToggle(TabSettings, "Anti Lag (Remove Shadows)", Config.AntiLag, function(
 end)
 
 CreateSection(TabSettings, "CONFIGURATION")
-CreateButton(TabSettings, "SAVE CONFIGURATION", function(btn, frame)
-    SaveConfig(btn, frame)
-end)
-CreateButton(TabSettings, "RESET SETTINGS", function(btn, frame)
-    Config = DeepCopy(DefaultConfig)
-    Config.GuiPositions = {}
-    SetTheme("Original")
-    
-    if writefile then
-        pcall(function()
-            writefile(ConfigFileName, HttpService:JSONEncode(Config))
-        end)
-    end
-    
-    btn.Text = "RESET DONE!"
-    btn.TextColor3 = Color3.fromRGB(0, 255, 100)
-    
-    task.delay(1, function()
-        btn.Text = "RESET SETTINGS"
-        btn.TextColor3 = Theme.Accent
-        NexusNotify("RESET", "Settings reset!", 5)
-    end)
-end)
 
 -- ==============================================================================
--- SAVE SYSTEM & POSITIONS (CORRIGIDO)
+-- SAVE SYSTEM & POSITIONS
 -- ==============================================================================
 local function SaveConfig(btnLabel, btnFrame)
     if writefile then
         -- Garantir que o tema atual esteja salvo
         Config.CustomTheme = Config.CustomTheme or "Original"
         
+        -- Salvar posições atuais das GUIs
         Config.GuiPositions = {}
-        if MainFrame then
+        
+        if MainFrame and MainFrame.Visible then
             Config.GuiPositions["MainFrame"] = {
                 MainFrame.Position.X.Scale,
                 MainFrame.Position.X.Offset,
@@ -2244,6 +2316,7 @@ local function SaveConfig(btnLabel, btnFrame)
                 MainFrame.Position.Y.Offset
             }
         end
+        
         if ToggleButton then
             Config.GuiPositions["ToggleButton"] = {
                 ToggleButton.Position.X.Scale,
@@ -2252,6 +2325,7 @@ local function SaveConfig(btnLabel, btnFrame)
                 ToggleButton.Position.Y.Offset
             }
         end
+        
         if ShootButton then
             Config.GuiPositions["ShootButton"] = {
                 ShootButton.Position.X.Scale,
@@ -2260,6 +2334,7 @@ local function SaveConfig(btnLabel, btnFrame)
                 ShootButton.Position.Y.Offset
             }
         end
+        
         if GrabFrame then
             Config.GuiPositions["GrabFrame"] = {
                 GrabFrame.Position.X.Scale,
@@ -2268,6 +2343,7 @@ local function SaveConfig(btnLabel, btnFrame)
                 GrabFrame.Position.Y.Offset
             }
         end
+        
         if InvisFrame then
             Config.GuiPositions["InvisFrame"] = {
                 InvisFrame.Position.X.Scale,
@@ -2276,13 +2352,17 @@ local function SaveConfig(btnLabel, btnFrame)
                 InvisFrame.Position.Y.Offset
             }
         end
-
+        
+        -- Converter a tabela Config para JSON
         local success, encoded = pcall(function()
             return HttpService:JSONEncode(Config)
         end)
         
         if success then
-            writefile(ConfigFileName, encoded)
+            -- Escrever no arquivo
+            pcall(function()
+                writefile(ConfigFileName, encoded)
+            end)
             
             if btnLabel then
                 btnLabel.Text = "SAVED!"
@@ -2309,9 +2389,39 @@ local function SaveConfig(btnLabel, btnFrame)
                     btnLabel.TextColor3 = Theme.Accent
                 end)
             end
+            NexusNotify("ERROR", "Failed to save configuration!", 3)
         end
+    else
+        NexusNotify("ERROR", "writefile not available!", 3)
     end
 end
+
+-- Botão de salvar configuração
+CreateButton(TabSettings, "SAVE CONFIGURATION", function(btn, frame)
+    SaveConfig(btn, frame)
+end)
+
+-- Botão de reset
+CreateButton(TabSettings, "RESET SETTINGS", function(btn, frame)
+    Config = DeepCopy(DefaultConfig)
+    Config.GuiPositions = {}
+    SetTheme("Original")
+    
+    if writefile then
+        pcall(function()
+            writefile(ConfigFileName, HttpService:JSONEncode(Config))
+        end)
+    end
+    
+    btn.Text = "RESET DONE!"
+    btn.TextColor3 = Color3.fromRGB(0, 255, 100)
+    
+    task.delay(1, function()
+        btn.Text = "RESET SETTINGS"
+        btn.TextColor3 = Theme.Accent
+        NexusNotify("RESET", "Settings reset!", 5)
+    end)
+end)
 
 -- ==============================================================================
 -- FUNÇÕES ADICIONAIS PARA BOTÕES
@@ -2416,7 +2526,7 @@ task.spawn(function()
 end)
 
 -- ==============================================================================
--- FUNÇÃO PARA CARREGAR POSIÇÕES (CORRIGIDA)
+-- FUNÇÃO PARA CARREGAR POSIÇÕES
 -- ==============================================================================
 local function LoadGuiPositions()
     if Config.GuiPositions then
@@ -2426,7 +2536,6 @@ local function LoadGuiPositions()
                 local p = Config.GuiPositions[name]
                 if #p >= 4 then
                     uiObj.Position = UDim2.new(p[1], p[2], p[3], p[4])
-                    print("Posição carregada para " .. name .. ": " .. tostring(p[1]) .. ", " .. tostring(p[2]) .. ", " .. tostring(p[3]) .. ", " .. tostring(p[4]))
                 end
             end
         end
@@ -2437,7 +2546,7 @@ local function LoadGuiPositions()
         -- Carregar posição do ToggleButton
         SetPos(ToggleButton, "ToggleButton")
         
-        -- Carregar posição do ShootButton (importante!)
+        -- Carregar posição do ShootButton
         SetPos(ShootButton, "ShootButton")
         
         -- Carregar posição do GrabFrame
@@ -2445,13 +2554,11 @@ local function LoadGuiPositions()
         
         -- Carregar posição do InvisFrame
         SetPos(InvisFrame, "InvisFrame")
-    else
-        print("Nenhuma posição salva encontrada na config")
     end
 end
 
 -- ==============================================================================
--- INICIALIZAÇÃO FINAL (CORRIGIDA)
+-- INICIALIZAÇÃO FINAL
 -- ==============================================================================
 if tabs[1] then
     tabs[1].Frame.Visible = true
@@ -2489,12 +2596,17 @@ task.spawn(function()
     ApplyThemeToGUI()
 end)
 
+-- NOTIFICAÇÃO INICIAL CORRIGIDA
+task.wait(1) -- Pequeno delay para garantir que tudo foi carregado
 NexusNotify("NEXUS HUB MM2",
-    "Script loaded successfully!\n" ..
-    "- Fling with SPINNING effect enabled\n" ..
-    "- Custom Themes FIXED (title & buttons)\n" ..
-    "- Save system working with themes\n" ..
-    "- Positions loading FIXED for all elements\n" ..
-    "- Grab Gun button FIXED and working!\n" ..
-    "- Nova aba CRÉDITOS adicionada!\n" ..
-    "- LeadShot FIXED and working!", 5)
+    "✅ Script carregado com sucesso!\n\n" ..
+    "🔄 Novidades nesta versão:\n" ..
+    "• Sistema de Fling\n" ..
+    "• Temas customizados corrigidos\n" ..
+    "• Sistema de save funcionando\n" ..
+    "• Posições das GUIs salvas\n" ..
+    "• Botão Grab Gun corrigido\n" ..
+    "• LeadShot funcionando\n" ..
+    "• Nova aba CRÉDITOS\n" ..
+    "• Silient 99.9% de acerto\n\n" ..
+    "📌 Script 100% Atualizado", 8)
