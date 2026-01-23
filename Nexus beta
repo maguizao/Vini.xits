@@ -12,13 +12,12 @@ local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- ==============================================================================
--- CONFIGURAÇÕES
--- ==============================================================================
 local ConfigFileName = "NexusHub_MM2_Config.json"
 local CustomSoundId = "rbxassetid://4499400560"
 
--- Configurações padrão
+-- ==============================================================================
+-- CONFIGURAÇÕES PADRÃO (DEFAULTS)
+-- ==============================================================================
 local DefaultConfig = {
     -- COMBAT
     SilentAim = false,
@@ -31,7 +30,7 @@ local DefaultConfig = {
     HitboxVisible = false,
     
     -- KNIFE
-    KnifeHoming = false,
+    KnifeHoming = false,     
     KnifeTriggerDist = 25,
     KnifeAura = false,
     KnifeAuraDist = 15,
@@ -76,13 +75,17 @@ local DefaultConfig = {
     AntiLag = false,
     
     -- NOVOS
-    FlingEnabled = false,
+    FlingSheriff = false,
+    FlingMurderer = false,
     
-    -- POSITIONS
+    -- CUSTOM THEME
+    CustomTheme = "Original", -- "Original", "Red", "Blue", "Verde", "Purple", "Yellow"
+    
+    -- POSITIONS (Saved)
     GuiPositions = {}
 }
 
--- Função para carregar configurações
+-- Copia profunda para uso atual
 local function DeepCopy(orig)
     local copy = {}
     if type(orig) == 'table' then
@@ -97,30 +100,90 @@ end
 
 local Config = DeepCopy(DefaultConfig)
 
--- Verificar se as funções de arquivo existem
-local hasFileFunctions = false
-if pcall(function() return isfile end) then
-    hasFileFunctions = true
-end
+-- ==============================================================================
+-- TEMAS PRÉ-DEFINIDOS
+-- ==============================================================================
+local Themes = {
+    Original = {
+        Background = Color3.fromRGB(15, 15, 20),
+        Sidebar = Color3.fromRGB(20, 20, 25),
+        Accent = Color3.fromRGB(0, 170, 255),
+        AccentDark = Color3.fromRGB(0, 80, 150),
+        Ghost = Color3.fromRGB(140, 50, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 30, 35),
+        InputBG = Color3.fromRGB(10, 10, 15)
+    },
+    Red = {
+        Background = Color3.fromRGB(20, 15, 15),
+        Sidebar = Color3.fromRGB(25, 20, 20),
+        Accent = Color3.fromRGB(255, 0, 0),
+        AccentDark = Color3.fromRGB(150, 0, 0),
+        Ghost = Color3.fromRGB(255, 50, 140),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(35, 30, 30),
+        InputBG = Color3.fromRGB(15, 10, 10)
+    },
+    Blue = {
+        Background = Color3.fromRGB(15, 15, 20),
+        Sidebar = Color3.fromRGB(20, 20, 25),
+        Accent = Color3.fromRGB(0, 100, 255),
+        AccentDark = Color3.fromRGB(0, 50, 150),
+        Ghost = Color3.fromRGB(50, 140, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 30, 35),
+        InputBG = Color3.fromRGB(10, 10, 15)
+    },
+    Verde = {
+        Background = Color3.fromRGB(15, 20, 15),
+        Sidebar = Color3.fromRGB(20, 25, 20),
+        Accent = Color3.fromRGB(0, 255, 0),
+        AccentDark = Color3.fromRGB(0, 150, 0),
+        Ghost = Color3.fromRGB(140, 255, 50),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 35, 30),
+        InputBG = Color3.fromRGB(10, 15, 10)
+    },
+    Purple = {
+        Background = Color3.fromRGB(20, 15, 20),
+        Sidebar = Color3.fromRGB(25, 20, 25),
+        Accent = Color3.fromRGB(170, 0, 255),
+        AccentDark = Color3.fromRGB(80, 0, 150),
+        Ghost = Color3.fromRGB(200, 50, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(35, 30, 35),
+        InputBG = Color3.fromRGB(15, 10, 15)
+    },
+    Yellow = {
+        Background = Color3.fromRGB(20, 20, 15),
+        Sidebar = Color3.fromRGB(25, 25, 20),
+        Accent = Color3.fromRGB(255, 255, 0),
+        AccentDark = Color3.fromRGB(150, 150, 0),
+        Ghost = Color3.fromRGB(255, 255, 50),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(35, 35, 30),
+        InputBG = Color3.fromRGB(15, 15, 10)
+    }
+}
 
--- Carregar configurações salvas
+-- ==============================================================================
+-- CARREGAMENTO INICIAL DE DADOS
+-- ==============================================================================
 local function LoadConfigDataOnly()
-    if hasFileFunctions and isfile(ConfigFileName) then
-        local success, content = pcall(function()
-            return readfile(ConfigFileName)
-        end)
-        
-        if success and content then
-            local success2, decoded = pcall(function()
-                return HttpService:JSONDecode(content)
-            end)
-            
-            if success2 and decoded then
-                for key, value in pairs(decoded) do
-                    if Config[key] ~= nil then
-                        Config[key] = value
-                    end
-                end
+    if isfile and isfile(ConfigFileName) then
+        local content = readfile(ConfigFileName)
+        local success, decoded = pcall(function() return HttpService:JSONDecode(content) end)
+        if success and decoded then 
+            for key, value in pairs(decoded) do 
+                if Config[key] ~= nil then 
+                    Config[key] = value 
+                end 
             end
         end
     end
@@ -129,7 +192,7 @@ end
 LoadConfigDataOnly()
 
 -- ==============================================================================
--- TEMAS & VARIÁVEIS
+-- VARIÁVEIS
 -- ==============================================================================
 local RoleColors = {
     Murderer = Color3.fromRGB(255, 0, 0),
@@ -140,34 +203,26 @@ local RoleColors = {
     Gun = Color3.fromRGB(255, 255, 255)
 }
 
-local Theme = {
-    Background = Color3.fromRGB(15, 15, 20),
-    Sidebar = Color3.fromRGB(20, 20, 25),
-    Accent = Color3.fromRGB(0, 170, 255),
-    AccentDark = Color3.fromRGB(0, 80, 150),
-    Ghost = Color3.fromRGB(140, 50, 255),
-    Text = Color3.fromRGB(255, 255, 255),
-    TextDim = Color3.fromRGB(150, 150, 150),
-    ItemBG = Color3.fromRGB(30, 30, 35),
-    InputBG = Color3.fromRGB(10, 10, 15)
-}
+local Theme = Themes[Config.CustomTheme] or Themes.Original
 
 local foundGunDrop = nil
-local RoleCache = {}
-local tabs = {}
-local lastMyRole = "FORCE_RESET"
+local RoleCache = {} 
+local tabs = {} 
+local lastMyRole = "FORCE_RESET" 
 local rolesNotified = false
 local playerDataRemote = nil
 local ShootGui, GrabFrame, InvisFrame, ToggleButton, MainFrame, ShootButton
 local InvisActive = false
 
--- Variáveis para Fling
-local flingTarget = nil
+-- Variáveis para Fling com Giro
 local movel = 0.1
-local hiddenfling = false
-local FlingGui = nil
+local flingActive = false
+local flingTargetRole = nil
+local flingTarget = nil
+local originalPosition = nil
+local spinAngle = 0
+local spinSpeed = 50 -- Velocidade do giro (graus por frame)
 
--- Limpar GUIs antigas
 if _G.NexusHubLoaded then
     if CoreGui:FindFirstChild("NexusHubMain") then CoreGui.NexusHubMain:Destroy() end
     if CoreGui:FindFirstChild("ShootGui_Overlay_V19") then CoreGui.ShootGui_Overlay_V19:Destroy() end
@@ -176,27 +231,26 @@ if _G.NexusHubLoaded then
     if CoreGui:FindFirstChild("NexusNotifyContainer") then CoreGui.NexusNotifyContainer:Destroy() end
     if CoreGui:FindFirstChild("NexusGrabGunBtn") then CoreGui.NexusGrabGunBtn:Destroy() end
     if CoreGui:FindFirstChild("NexusInvisBtn") then CoreGui.NexusInvisBtn:Destroy() end
-    if CoreGui:FindFirstChild("NexusFlingGui") then CoreGui.NexusFlingGui:Destroy() end
 end
 _G.NexusHubLoaded = true
 
 -- ==============================================================================
--- UTILS & SOUND
+-- FUNÇÕES UTILITÁRIAS
 -- ==============================================================================
-local function AddCorner(instance, radius)
+local function AddCorner(instance, radius) 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, radius)
     corner.Parent = instance
-    return corner
+    return corner 
 end
 
-local function AddStroke(instance, color, thickness)
+local function AddStroke(instance, color, thickness) 
     local stroke = Instance.new("UIStroke")
     stroke.Color = color
     stroke.Thickness = thickness
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Parent = instance
-    return stroke
+    return stroke 
 end
 
 local function PlayClickSound()
@@ -210,47 +264,40 @@ local function PlayClickSound()
         s.Ended:Connect(function()
             s:Destroy()
         end)
-    end
+    end)
 end
 
 local function MakeDraggable(frame, trigger)
     trigger = trigger or frame
     local dragging, dragInput, dragStart, startPos
-    
-    trigger.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+    trigger.InputBegan:Connect(function(input) 
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
+            input.Changed:Connect(function() 
+                if input.UserInputState == Enum.UserInputState.End then 
+                    dragging = false 
+                end 
+            end) 
+        end 
     end)
-    
-    trigger.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
+    trigger.InputChanged:Connect(function(input) 
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then 
+            dragInput = input 
+        end 
     end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input == dragInput then
+    UserInputService.InputChanged:Connect(function(input) 
+        if dragging and input == dragInput then 
             local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end 
     end)
 end
 
--- Sistema de Notificações
+-- ==============================================================================
+-- NOTIFICAÇÕES
+-- ==============================================================================
 local NotifyContainer = Instance.new("ScreenGui")
 NotifyContainer.Name = "NexusNotifyContainer"
 NotifyContainer.Parent = CoreGui
@@ -284,7 +331,9 @@ local function NexusNotify(title, text, duration)
     Stroke.Thickness = 1.5
     Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     
-    local Corner = AddCorner(Frame, 6)
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.Parent = Frame
     
     local TitleLbl = Instance.new("TextLabel")
     TitleLbl.Parent = Frame
@@ -325,7 +374,6 @@ local function NexusNotify(title, text, duration)
             TweenService:Create(TitleLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
             TweenService:Create(MsgLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
             TweenService:Create(Stroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
-            
             task.wait(0.3)
             Frame:Destroy()
         end
@@ -333,9 +381,8 @@ local function NexusNotify(title, text, duration)
 end
 
 -- ==============================================================================
--- GUI DE BOTÕES FLUTUANTES
+-- BOTÕES FLUTUANTES (GRAB GUN E INVISIBLE)
 -- ==============================================================================
--- Botão Grab Gun
 local GrabGunGui = Instance.new("ScreenGui")
 GrabGunGui.Name = "NexusGrabGunBtn"
 GrabGunGui.Parent = CoreGui
@@ -361,10 +408,9 @@ GrabBtn.TextColor3 = Theme.Accent
 GrabBtn.Font = Enum.Font.GothamBlack
 GrabBtn.TextSize = 11
 GrabBtn.AutoButtonColor = true
-
+GrabBtn.Name = "GrabButtonText"
 MakeDraggable(GrabFrame, GrabBtn)
 
--- Botão Invisível
 local InvisGui = Instance.new("ScreenGui")
 InvisGui.Name = "NexusInvisBtn"
 InvisGui.Parent = CoreGui
@@ -390,10 +436,1749 @@ InvisBtn.TextColor3 = Theme.Ghost
 InvisBtn.Font = Enum.Font.GothamBlack
 InvisBtn.TextSize = 11
 InvisBtn.AutoButtonColor = true
-
 MakeDraggable(InvisFrame, InvisBtn)
 
--- Função para alternar invisibilidade
+-- ==============================================================================
+-- SISTEMA DE FLING COM GIRO RÁPIDO
+-- ==============================================================================
+local function FindTargetByRole(roleName)
+    for plrName, role in pairs(RoleCache) do
+        if role == roleName then
+            local plr = Players:FindFirstChild(plrName)
+            if plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                return plr.Character
+            end
+        end
+    end
+    return nil
+end
+
+local function StartFling(targetRole)
+    if flingActive and flingTargetRole == targetRole then
+        -- Desativa o fling
+        flingActive = false
+        flingTargetRole = nil
+        flingTarget = nil
+        spinAngle = 0
+        
+        -- Teleporta o player de volta para a posição original
+        if originalPosition and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPosition
+            originalPosition = nil
+            NexusNotify("FLING", "Returned to original position", 3)
+        end
+        
+        NexusNotify("FLING", "Fling for " .. targetRole .. " disabled", 3)
+        return
+    end
+    
+    -- Se não estava ativado, ativar
+    flingActive = true
+    flingTargetRole = targetRole
+    flingTarget = FindTargetByRole(targetRole)
+    
+    if flingTarget then
+        -- Salva a posição original
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            originalPosition = LocalPlayer.Character.HumanoidRootPart.CFrame
+        end
+        
+        -- Teleporta para dentro do player
+        local myRoot = LocalPlayer.Character.HumanoidRootPart
+        local targetRoot = flingTarget.HumanoidRootPart
+        if myRoot and targetRoot then
+            myRoot.CFrame = targetRoot.CFrame
+            myRoot.Velocity = Vector3.new(0,0,0)
+            myRoot.RotVelocity = Vector3.new(0,0,0)
+        end
+        
+        NexusNotify("FLING", "Fling enabled for " .. targetRole .. " (SPINNING)", 3)
+    else
+        NexusNotify("FLING", targetRole .. " not found", 3)
+        flingActive = false
+        flingTargetRole = nil
+    end
+end
+
+local function ToggleFling(roleName)
+    PlayClickSound()
+    
+    -- Se já estiver ativo para outro role, desliga primeiro
+    if flingActive and flingTargetRole ~= roleName then
+        flingActive = false
+        flingTargetRole = nil
+        flingTarget = nil
+        spinAngle = 0
+        -- Reset position if coming from different fling
+        if originalPosition and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPosition
+            originalPosition = nil
+        end
+        task.wait(0.1)
+    end
+    
+    -- Liga/desliga o fling
+    StartFling(roleName)
+    
+    -- Atualiza as configurações
+    if roleName == "Sheriff" then
+        Config.FlingSheriff = flingActive and flingTargetRole == "Sheriff"
+    elseif roleName == "Murderer" then
+        Config.FlingMurderer = flingActive and flingTargetRole == "Murderer"
+    end
+end
+
+-- Sistema de Fling com Giro
+task.spawn(function()
+    while true do
+        if flingActive then
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                -- Atualiza o alvo a cada iteração
+                flingTarget = FindTargetByRole(flingTargetRole)
+                
+                -- Se tiver alvo, fica dentro dele com giro
+                if flingTarget and flingTarget:FindFirstChild("HumanoidRootPart") then
+                    local targetHrp = flingTarget.HumanoidRootPart
+                    
+                    -- Aplica giro rápido
+                    spinAngle = (spinAngle + spinSpeed) % 360
+                    local offset = CFrame.new(0, 0, 0) * CFrame.Angles(0, math.rad(spinAngle), 0)
+                    hrp.CFrame = targetHrp.CFrame * offset
+                    hrp.Velocity = Vector3.new(0,0,0)
+                    hrp.RotVelocity = Vector3.new(0,0,0)
+                end
+                
+                -- Aplica o fling (código original)
+                local vel = hrp.Velocity
+                hrp.Velocity = vel * 10000 + Vector3.new(0, 1000000, 0)
+                RunService.RenderStepped:Wait()
+                hrp.Velocity = vel
+                RunService.Stepped:Wait()
+                hrp.Velocity = vel + Vector3.new(0, movel, 0)
+                movel = -movel
+            end
+        end
+        RunService.Heartbeat:Wait()
+    end
+end)
+
+-- ==============================================================================
+-- SHOOT GUI
+-- ==============================================================================
+local function GetLeadShotPosition(targetRootPart)
+    local currentPos = targetRootPart.Position
+    local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
+    local predictedPos = currentPos + (targetRootPart.Velocity * ping * 1.5)
+    return predictedPos
+end
+
+ShootGui = Instance.new("ScreenGui")
+ShootGui.Name = "ShootGui_Overlay_V19"
+ShootGui.Parent = CoreGui
+ShootGui.Enabled = false
+ShootGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+ShootButton = Instance.new("TextButton")
+ShootButton.Parent = ShootGui
+ShootButton.BackgroundColor3 = Theme.Background
+ShootButton.Position = UDim2.new(0.65, 0, 0.6, 0)
+ShootButton.Size = UDim2.new(0, 220, 0, 80)
+ShootButton.Font = Enum.Font.GothamBold
+ShootButton.Text = "NEXUS AIM"
+ShootButton.TextColor3 = Theme.Accent
+ShootButton.TextSize = 24
+ShootButton.AutoButtonColor = false
+ShootButton.TextStrokeTransparency = 0.8
+
+local ShootCorner = Instance.new("UICorner")
+ShootCorner.CornerRadius = UDim.new(0, 10)
+ShootCorner.Parent = ShootButton
+
+local ShootStroke = Instance.new("UIStroke")
+ShootStroke.Parent = ShootButton
+ShootStroke.Color = Theme.Accent
+ShootStroke.Thickness = 2
+ShootStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local ShootGradient = Instance.new("UIGradient")
+ShootGradient.Parent = ShootStroke
+ShootGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0.00, Theme.Accent),
+    ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(1.00, Theme.Accent)
+}
+ShootGradient.Rotation = 45
+
+task.spawn(function()
+    while ShootGui do
+        if ShootGui.Enabled then
+            ShootGradient.Rotation = (ShootGradient.Rotation + 2) % 360
+            local t = tick() % 2
+            local alpha = 0.5 + 0.5 * math.sin(t * math.pi)
+            ShootButton.TextColor3 = Theme.Accent:Lerp(Color3.fromRGB(255, 255, 255), alpha)
+        end
+        task.wait(0.03)
+    end
+end)
+
+MakeDraggable(ShootButton)
+
+if Config.SilentAim then
+    ShootGui.Enabled = true
+end
+
+ShootButton.MouseButton1Click:Connect(function()
+    PlayClickSound()
+    local gun = nil
+    
+    for _, i in ipairs(LocalPlayer.Character:GetChildren()) do
+        if i:IsA("Tool") and (string.find(string.lower(i.Name), "gun") or i.Name == "Revolver") then
+            gun = i
+        end
+    end
+    
+    if not gun then
+        for _, i in ipairs(LocalPlayer.Backpack:GetChildren()) do
+            if i:IsA("Tool") and (string.find(string.lower(i.Name), "gun") or i.Name == "Revolver") then
+                gun = i
+            end
+        end
+    end
+    
+    ShootButton.Text = "FIRED"
+    ShootStroke.Color = Color3.fromRGB(255, 50, 50)
+    
+    task.delay(0.2, function()
+        ShootButton.Text = "NEXUS AIM"
+        ShootStroke.Color = Theme.Accent
+    end)
+    
+    if not gun then
+        return
+    end
+    
+    local targetPlr = nil
+    for plrName, role in pairs(RoleCache) do
+        if role == "Murderer" then
+            targetPlr = Players:FindFirstChild(plrName)
+            break
+        end
+    end
+    
+    if not targetPlr or not targetPlr.Character or not targetPlr.Character:FindFirstChild("HumanoidRootPart") then
+        return
+    end
+    
+    if Config.WallCheck then
+        local origin = Camera.CFrame.Position
+        local targetPosRaw = targetPlr.Character.HumanoidRootPart.Position
+        local direction = (targetPosRaw - origin).Unit * (targetPosRaw - origin).Magnitude
+        
+        local rayParams = RaycastParams.new()
+        rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPlr.Character, workspace:FindFirstChild("GunDrop")}
+        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+        
+        if workspace:Raycast(origin, direction, rayParams) then
+            ShootButton.Text = "BLOCKED"
+            task.delay(0.2, function()
+                ShootButton.Text = "NEXUS AIM"
+            end)
+            return
+        end
+    end
+    
+    if gun.Parent == LocalPlayer.Backpack then
+        LocalPlayer.Character.Humanoid:EquipTool(gun)
+        task.wait()
+    end
+    
+    local targetRoot = targetPlr.Character.HumanoidRootPart
+    local targetPos = targetRoot.Position
+    
+    if Config.LeadShot then
+        targetPos = GetLeadShotPosition(targetRoot)
+    end
+    
+    local args = {CFrame.new(Camera.CFrame.Position, targetPos), CFrame.new(targetPos)}
+    
+    if gun:FindFirstChild("Shoot") then
+        gun.Shoot:FireServer(unpack(args))
+    end
+end)
+
+-- ==============================================================================
+-- LOGICA DO JOGO
+-- ==============================================================================
+local function getRoles()
+    if not playerDataRemote then
+        playerDataRemote = ReplicatedStorage:FindFirstChild("GetPlayerData", true)
+    end
+    
+    if playerDataRemote then
+        local success, data = pcall(function()
+            return playerDataRemote:InvokeServer()
+        end)
+        
+        if success and data then
+            local newRoles = {}
+            local hasMurder = false
+            
+            for plr, plrData in pairs(data) do
+                if plrData.Dead or not plrData.Role or plrData.Role == "" then
+                    newRoles[plr] = "Lobby"
+                else
+                    newRoles[plr] = plrData.Role
+                end
+                
+                if plrData.Role == "Murderer" then
+                    hasMurder = true
+                end
+            end
+            
+            if not hasMurder then
+                rolesNotified = false
+            end
+            
+            return newRoles
+        end
+    end
+    return nil
+end
+
+local function ShowRoleAlert(role)
+    if not Config.InstantRole then
+        return
+    end
+    
+    if role == "Hero" then
+        return
+    end
+    
+    if CoreGui:FindFirstChild("NexusRoleAlert") then
+        CoreGui.NexusRoleAlert:Destroy()
+    end
+    
+    local AlertGui = Instance.new("ScreenGui")
+    AlertGui.Name = "NexusRoleAlert"
+    AlertGui.Parent = CoreGui
+    AlertGui.IgnoreGuiInset = true
+    
+    local MainLabel = Instance.new("TextLabel")
+    MainLabel.Parent = AlertGui
+    MainLabel.Size = UDim2.new(1, 0, 0, 100)
+    MainLabel.Position = UDim2.new(0, 0, 0.3, 0)
+    MainLabel.BackgroundTransparency = 1
+    MainLabel.Font = Enum.Font.GothamBlack
+    MainLabel.Text = "YOU ARE " .. string.upper(role)
+    MainLabel.TextColor3 = RoleColors[role] or Color3.fromRGB(255, 255, 255)
+    MainLabel.TextSize = 0
+    MainLabel.TextStrokeTransparency = 0.5
+    MainLabel.TextStrokeColor3 = Color3.new(0,0,0)
+    
+    TweenService:Create(MainLabel, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {TextSize = 60}):Play()
+    
+    local sound = Instance.new("Sound", AlertGui)
+    sound.SoundId = "rbxassetid://10548111966"
+    sound.Volume = 2
+    sound:Play()
+    
+    task.delay(4, function()
+        if MainLabel then
+            TweenService:Create(MainLabel, TweenInfo.new(0.5), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+            task.wait(0.5)
+            if AlertGui then
+                AlertGui:Destroy()
+            end
+        end
+    end)
+end
+
+task.spawn(function()
+    while true do
+        local roles = getRoles()
+        if roles then
+            RoleCache = roles
+            local myRole = RoleCache[LocalPlayer.Name] or "Lobby"
+            
+            if myRole ~= "Lobby" and myRole ~= lastMyRole then
+                lastMyRole = myRole
+                ShowRoleAlert(myRole)
+            elseif myRole == "Lobby" then
+                lastMyRole = "Lobby"
+            end
+            
+            if Config.NotifyRoles and not rolesNotified then
+                local m, s = "None", "None"
+                
+                for p, r in pairs(RoleCache) do
+                    if r == "Murderer" then
+                        m = p
+                    elseif r == "Sheriff" then
+                        s = p
+                    end
+                end
+                
+                if m ~= "None" then
+                    NexusNotify("ROLES REVEALED", "Murderer: " .. m .. "\nSheriff: " .. s, 5)
+                    rolesNotified = true
+                end
+            end
+        end
+        task.wait(0.25)
+    end
+end)
+
+local wasGunDropped = false
+
+task.spawn(function()
+    while true do
+        local dropped = Workspace:FindFirstChild("GunDrop", true)
+        foundGunDrop = dropped
+        
+        if GrabFrame then
+            GrabFrame.Visible = Config.ShowGrabBtn
+        end
+        
+        if InvisFrame then
+            InvisFrame.Visible = Config.ShowInvisBtn
+        end
+
+        if dropped and not wasGunDropped then
+            if Config.NotifyGunDrop then
+                NexusNotify("GUN DROPPED", "The gun has been dropped on the map!", 4)
+            end
+        end
+        
+        if wasGunDropped and not dropped and Config.NotifyGunPickup then
+            task.wait(0.5)
+            for _, p in ipairs(Players:GetPlayers()) do
+                local char = p.Character
+                if char and (char:FindFirstChild("Gun") or char:FindFirstChild("Revolver") or (p.Backpack and (p.Backpack:FindFirstChild("Gun") or p.Backpack:FindFirstChild("Revolver")))) then
+                    NexusNotify("GUN TAKEN", p.Name .. " picked up the gun!", 4)
+                    break
+                end
+            end
+        end
+        
+        wasGunDropped = (dropped ~= nil)
+        task.wait(0.2)
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if hum then
+            if Config.WalkSpeedEnabled then
+                hum.WalkSpeed = Config.WalkSpeedValue
+            end
+            
+            if Config.JumpPowerEnabled then
+                hum.UseJumpPower = true
+                hum.JumpPower = Config.JumpPowerValue
+            end
+        end
+    end
+end)
+
+local function GetKnifeRemote()
+    if not LocalPlayer.Character then
+        return nil
+    end
+    
+    local tool = LocalPlayer.Character:FindFirstChild("Knife") or LocalPlayer.Backpack:FindFirstChild("Knife")
+    
+    if tool then
+        return tool:FindFirstChild("HandleTouched", true)
+    end
+    
+    return nil
+end
+
+-- ==============================================================================
+-- LOGICA KNIFE HIT, AURA & HITBOX
+-- ==============================================================================
+RunService.RenderStepped:Connect(function()
+    if Config.HitboxExpand then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    root.Size = Vector3.new(Config.HitboxSize, Config.HitboxSize, Config.HitboxSize)
+                    root.Transparency = Config.HitboxVisible and 0.5 or 1
+                    root.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if Config.KnifeAura and RoleCache[LocalPlayer.Name] == "Murderer" then
+            local myChar = LocalPlayer.Character
+            local knife = myChar and myChar:FindFirstChild("Knife")
+            
+            if knife and knife:FindFirstChild("Handle") then
+                local targetFound = false
+                
+                for _, enemy in ipairs(Players:GetPlayers()) do
+                    if enemy ~= LocalPlayer and enemy.Character then
+                        local eRoot = enemy.Character:FindFirstChild("HumanoidRootPart")
+                        local eHum = enemy.Character:FindFirstChild("Humanoid")
+                        local eRole = RoleCache[enemy.Name]
+                        
+                        if eRoot and eHum and eHum.Health > 0 and eRole ~= "Murderer" and eRole ~= "Lobby" then
+                            local dist = (eRoot.Position - myChar.HumanoidRootPart.Position).Magnitude
+                            
+                            if dist <= Config.KnifeAuraDist then
+                                eRoot.CFrame = knife.Handle.CFrame
+                                eRoot.Velocity = Vector3.new(0,0,0)
+                                eRoot.RotVelocity = Vector3.new(0,0,0)
+                                
+                                local remote = GetKnifeRemote()
+                                if remote then
+                                    pcall(function()
+                                        remote:FireServer(eRoot)
+                                    end)
+                                end
+                                
+                                if Config.KnifeLegitMode then
+                                    targetFound = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+                    
+                    if Config.KnifeLegitMode and targetFound then
+                        break
+                    end
+                end
+            end
+        end
+        task.wait()
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if Config.KnifeHoming and RoleCache[LocalPlayer.Name] == "Murderer" then
+        for _, obj in ipairs(Workspace:GetChildren()) do
+            if obj.Name == "ThrowingKnife" then
+                if not obj:IsDescendantOf(LocalPlayer.Character) then
+                    local targetFound = false
+                    
+                    for _, plr in ipairs(Players:GetPlayers()) do
+                        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                            local enemyRoot = plr.Character.HumanoidRootPart
+                            local role = RoleCache[plr.Name]
+                            
+                            if role ~= "Lobby" and role ~= "Murderer" then
+                                local knifePos = nil
+                                
+                                if obj:FindFirstChild("BladePosition") then
+                                    knifePos = obj.BladePosition.Position
+                                elseif obj:IsA("BasePart") then
+                                    knifePos = obj.Position
+                                elseif obj:FindFirstChild("Handle") then
+                                    knifePos = obj.Handle.Position
+                                end
+                                
+                                if knifePos then
+                                    local dist = (knifePos - enemyRoot.Position).Magnitude
+                                    
+                                    if dist <= Config.KnifeTriggerDist then
+                                        enemyRoot.CFrame = CFrame.new(knifePos)
+                                        enemyRoot.Velocity = Vector3.new(0,0,0)
+                                        
+                                        local remote = GetKnifeRemote()
+                                        if remote then
+                                            pcall(function()
+                                                remote:FireServer(enemyRoot)
+                                            end)
+                                        end
+                                        
+                                        if Config.KnifeLegitMode then
+                                            targetFound = true
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if Config.KnifeLegitMode and targetFound then
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    if Config.AntiFling then
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                for _, part in pairs(plr.Character:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanCollide then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if Config.AutoGrabGun then
+        local Char = LocalPlayer.Character
+        local Root = Char and Char:FindFirstChild("HumanoidRootPart")
+        
+        if Char and Root and RoleCache[LocalPlayer.Name] ~= "Murderer" and RoleCache[LocalPlayer.Name] ~= "Sheriff" then
+            local gun = Workspace:FindFirstChild("GunDrop", true)
+            
+            if gun and (gun.Position - Root.Position).Magnitude <= Config.GrabDistance then
+                gun.CanCollide = false
+                gun.CFrame = Root.CFrame
+                gun.Velocity = Vector3.new(0,0,0)
+            end
+        end
+    end
+end)
+
+-- ==============================================================================
+-- FUNÇÃO KILL ALL
+-- ==============================================================================
+local function KillAll()
+    if RoleCache[LocalPlayer.Name] ~= "Murderer" then
+        NexusNotify("KILL ALL", "You must be the Murderer to use this!", 3)
+        return
+    end
+    
+    local myChar = LocalPlayer.Character
+    local knife = myChar and myChar:FindFirstChild("Knife")
+    
+    if not knife then
+        knife = LocalPlayer.Backpack:FindFirstChild("Knife")
+    end
+    
+    if knife and knife:FindFirstChild("Handle") then
+        local killed = 0
+        
+        for _, enemy in ipairs(Players:GetPlayers()) do
+            if enemy ~= LocalPlayer and enemy.Character then
+                local eRoot = enemy.Character:FindFirstChild("HumanoidRootPart")
+                local eHum = enemy.Character:FindFirstChild("Humanoid")
+                local eRole = RoleCache[enemy.Name]
+                
+                if eRoot and eHum and eHum.Health > 0 and eRole ~= "Murderer" and eRole ~= "Lobby" then
+                    eRoot.CFrame = knife.Handle.CFrame
+                    eRoot.Velocity = Vector3.new(0,0,0)
+                    eRoot.RotVelocity = Vector3.new(0,0,0)
+                    
+                    local remote = GetKnifeRemote()
+                    if remote then
+                        pcall(function()
+                            remote:FireServer(eRoot)
+                        end)
+                    end
+                    
+                    killed = killed + 1
+                    
+                    if Config.KnifeLegitMode then
+                        break
+                    end
+                end
+            end
+        end
+        
+        if killed > 0 then
+            NexusNotify("KILL ALL", "Attempted to kill " .. killed .. " players.", 3)
+        else
+            NexusNotify("KILL ALL", "No valid targets found.", 3)
+        end
+    else
+        NexusNotify("KILL ALL", "You need a knife!", 3)
+    end
+end
+
+-- ==============================================================================
+-- ESP SYSTEM
+-- ==============================================================================
+local TracerGui = Instance.new("ScreenGui")
+TracerGui.Name = "NexusTracersGui"
+TracerGui.Parent = CoreGui
+TracerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+TracerGui.IgnoreGuiInset = true
+
+local TracerCache = {}
+
+local function UpdateESP()
+    for uuid, line in pairs(TracerCache) do
+        line.Visible = false
+    end
+    
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local role = RoleCache[plr.Name] or "Lobby"
+            local color = RoleColors[role] or RoleColors.Lobby
+            
+            local showFill, showOutline, showTracer, showName, showDist = false, false, false, false, false
+            
+            if role == "Murderer" then
+                showFill = Config.Murder_Fill
+                showOutline = Config.Murder_Outline
+                showTracer = Config.Murder_Tracer
+                showName = Config.Murder_Name
+                showDist = Config.Murder_Dist
+            elseif role == "Sheriff" then
+                showFill = Config.Sheriff_Fill
+                showOutline = Config.Sheriff_Outline
+                showTracer = Config.Sheriff_Tracer
+                showName = Config.Sheriff_Name
+                showDist = Config.Sheriff_Dist
+            elseif role == "Hero" then
+                showFill = Config.Hero_Fill
+                showOutline = Config.Hero_Outline
+                showTracer = Config.Hero_Tracer
+                showName = Config.Hero_Name
+                showDist = Config.Hero_Dist
+            elseif role == "Innocent" then
+                showFill = Config.Innocent_Fill
+                showOutline = Config.Innocent_Outline
+                showTracer = Config.Innocent_Tracer
+                showName = Config.Innocent_Name
+                showDist = Config.Innocent_Dist
+            else
+                showFill = Config.Lobby_Fill
+                showOutline = Config.Lobby_Outline
+                showTracer = Config.Lobby_Tracer
+                showName = Config.Lobby_Name
+                showDist = Config.Lobby_Dist
+            end
+            
+            local holder = plr.Character:FindFirstChild("NexusESP_Holder")
+            if not holder then
+                holder = Instance.new("Folder", plr.Character)
+                holder.Name = "NexusESP_Holder"
+            end
+            
+            local hl = holder:FindFirstChild("Highlight")
+            if showFill or showOutline then
+                if not hl then
+                    hl = Instance.new("Highlight", holder)
+                    hl.Adornee = plr.Character
+                end
+                
+                hl.FillColor = color
+                hl.OutlineColor = color
+                hl.FillTransparency = showFill and Config.FillTransparency or 1
+                hl.OutlineTransparency = showOutline and Config.OutlineTransparency or 1
+            else
+                if hl then
+                    hl:Destroy()
+                end
+            end
+            
+            local head = plr.Character:FindFirstChild("Head")
+            if head and (showName or showDist) then
+                local bg = holder:FindFirstChild("NameGui")
+                if not bg then
+                    bg = Instance.new("BillboardGui", holder)
+                    bg.Name = "NameGui"
+                    bg.Adornee = head
+                    bg.Size = UDim2.new(0, 200, 0, 50)
+                    bg.StudsOffset = Vector3.new(0, 3, 0)
+                    bg.AlwaysOnTop = true
+                    
+                    local t = Instance.new("TextLabel", bg)
+                    t.Name = "Txt"
+                    t.Size = UDim2.new(1, 0, 1, 0)
+                    t.BackgroundTransparency = 1
+                    t.Font = Enum.Font.GothamBold
+                    t.TextStrokeTransparency = 0.5
+                    t.TextSize = 13
+                end
+                
+                local finalText = ""
+                if showName then
+                    finalText = "[" .. string.upper(role) .. "]"
+                end
+                
+                if showDist and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - head.Position).Magnitude)
+                    finalText = finalText .. "\n[" .. tostring(dist) .. "m]"
+                end
+                
+                bg.Txt.Text = finalText
+                bg.Txt.TextColor3 = color
+            else
+                if holder:FindFirstChild("NameGui") then
+                    holder.NameGui:Destroy()
+                end
+            end
+            
+            local root = plr.Character:FindFirstChild("HumanoidRootPart")
+            if root and showTracer then
+                local vec, onScreen = Camera:WorldToViewportPoint(root.Position)
+                
+                if onScreen then
+                    local line = TracerCache[plr.Name]
+                    if not line then
+                        line = Instance.new("Frame")
+                        line.Name = plr.Name
+                        line.AnchorPoint = Vector2.new(0.5, 0.5)
+                        line.BorderSizePixel = 0
+                        line.Parent = TracerGui
+                        TracerCache[plr.Name] = line
+                    end
+                    
+                    line.Visible = true
+                    line.BackgroundColor3 = color
+                    
+                    local origin = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    local target = Vector2.new(vec.X, vec.Y)
+                    local length = (origin - target).Magnitude
+                    local center = (origin + target) / 2
+                    local angle = math.atan2(target.Y - origin.Y, target.X - origin.X)
+                    
+                    line.Size = UDim2.new(0, length, 0, 1.5)
+                    line.Position = UDim2.new(0, center.X, 0, center.Y)
+                    line.Rotation = math.deg(angle)
+                end
+            end
+        end
+    end
+    
+    if foundGunDrop then
+        local holder = foundGunDrop:FindFirstChild("NexusESP_Holder")
+        if not holder then
+            holder = Instance.new("Folder", foundGunDrop)
+            holder.Name = "NexusESP_Holder"
+        end
+        
+        local hl = holder:FindFirstChild("Highlight")
+        if Config.Gun_Fill or Config.Gun_Outline then
+            if not hl then
+                hl = Instance.new("Highlight", holder)
+                hl.Adornee = foundGunDrop
+            end
+            
+            hl.FillColor = RoleColors.Gun
+            hl.OutlineColor = RoleColors.Gun
+            hl.FillTransparency = Config.Gun_Fill and 0.5 or 1
+            hl.OutlineTransparency = Config.Gun_Outline and 0 or 1
+        else
+            if hl then
+                hl:Destroy()
+            end
+        end
+        
+        if Config.Gun_Name or Config.Gun_Dist then
+            local bg = holder:FindFirstChild("NameGui")
+            if not bg then
+                bg = Instance.new("BillboardGui", holder)
+                bg.Name = "NameGui"
+                bg.Adornee = foundGunDrop
+                bg.Size = UDim2.new(0, 200, 0, 50)
+                bg.StudsOffset = Vector3.new(0, 2, 0)
+                bg.AlwaysOnTop = true
+                
+                local t = Instance.new("TextLabel", bg)
+                t.Name = "Txt"
+                t.Size = UDim2.new(1, 0, 1, 0)
+                t.BackgroundTransparency = 1
+                t.Font = Enum.Font.GothamBold
+                t.TextStrokeTransparency = 0.5
+                t.TextSize = 13
+            end
+            
+            local txt = "GUN DROP"
+            if Config.Gun_Dist and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - foundGunDrop.Position).Magnitude)
+                txt = txt .. " ["..dist.."m]"
+            end
+            
+            bg.Txt.Text = txt
+            bg.Txt.TextColor3 = RoleColors.Gun
+        else
+            if holder:FindFirstChild("NameGui") then
+                holder.NameGui:Destroy()
+            end
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(UpdateESP)
+
+-- ==============================================================================
+-- UI BUILDER (MAIN MENU)
+-- ==============================================================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NexusHubMain"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+ToggleButton = Instance.new("TextButton")
+ToggleButton.Parent = ScreenGui
+ToggleButton.Size = UDim2.new(0, 40, 0, 40)
+ToggleButton.Position = UDim2.new(0.1, 0, 0.1, 0)
+ToggleButton.BackgroundColor3 = Theme.Background
+ToggleButton.Text = "N"
+ToggleButton.TextColor3 = Theme.Accent
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 24
+ToggleButton.AutoButtonColor = false
+ToggleButton.ZIndex = 100
+AddCorner(ToggleButton, 10)
+AddStroke(ToggleButton, Theme.Accent, 2)
+MakeDraggable(ToggleButton, ToggleButton)
+
+MainFrame = Instance.new("Frame")
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Size = UDim2.new(0, 400, 0, 320)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.BackgroundColor3 = Theme.Background
+MainFrame.Parent = ScreenGui
+MainFrame.ClipsDescendants = true
+MainFrame.Visible = true
+AddCorner(MainFrame, 10)
+AddStroke(MainFrame, Theme.Accent, 2)
+
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 100, 1, 0)
+Sidebar.BackgroundColor3 = Theme.Sidebar
+Sidebar.Parent = MainFrame
+AddCorner(Sidebar, 10)
+MakeDraggable(MainFrame, Sidebar)
+
+ToggleButton.MouseButton1Click:Connect(function()
+    PlayClickSound()
+    MainFrame.Visible = not MainFrame.Visible
+    
+    if MainFrame.Visible then
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        MainFrame.BackgroundTransparency = 1
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 400, 0, 320), BackgroundTransparency = 0}):Play()
+    end
+end)
+
+local ContentContainer = Instance.new("Frame")
+ContentContainer.Size = UDim2.new(1, -110, 1, -20)
+ContentContainer.Position = UDim2.new(0, 110, 0, 10)
+ContentContainer.BackgroundTransparency = 1
+ContentContainer.Parent = MainFrame
+
+TitleLabel = Instance.new("TextLabel")
+TitleLabel.Parent = Sidebar
+TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "NEXUS MM2"
+TitleLabel.TextColor3 = Theme.Accent
+TitleLabel.Font = Enum.Font.GothamBlack
+TitleLabel.TextSize = 14
+TitleLabel.LayoutOrder = 0
+
+local function CreateTab(name)
+    local TabBtn = Instance.new("TextButton")
+    TabBtn.Size = UDim2.new(1, -10, 0, 30)
+    TabBtn.Position = UDim2.new(0, 5, 0, 50 + (#tabs * 35))
+    TabBtn.BackgroundColor3 = Theme.Background
+    TabBtn.Text = name
+    TabBtn.Font = Enum.Font.GothamSemibold
+    TabBtn.TextColor3 = Theme.TextDim
+    TabBtn.TextSize = 12
+    TabBtn.AutoButtonColor = false
+    TabBtn.Parent = Sidebar
+    AddCorner(TabBtn, 6)
+    
+    local TabFrame = Instance.new("ScrollingFrame")
+    TabFrame.Size = UDim2.new(1, 0, 1, 0)
+    TabFrame.BackgroundTransparency = 1
+    TabFrame.ScrollBarThickness = 2
+    TabFrame.ScrollBarImageColor3 = Theme.Accent
+    TabFrame.Visible = false
+    TabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    TabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    TabFrame.Parent = ContentContainer
+    
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 6)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = TabFrame
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0, 5)
+    padding.PaddingLeft = UDim.new(0, 5)
+    padding.PaddingBottom = UDim.new(0, 5)
+    padding.Parent = TabFrame
+    
+    table.insert(tabs, {Btn = TabBtn, Frame = TabFrame})
+    
+    TabBtn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        
+        for _, t in ipairs(tabs) do
+            t.Frame.Visible = false
+            TweenService:Create(t.Btn, TweenInfo.new(0.3), {TextColor3 = Theme.TextDim, BackgroundColor3 = Theme.Background}):Play()
+        end
+        
+        TabFrame.Visible = true
+        TweenService:Create(TabBtn, TweenInfo.new(0.3), {TextColor3 = Theme.Text, BackgroundColor3 = Theme.AccentDark}):Play()
+    end)
+    
+    return TabFrame
+end
+
+local function CreateToggle(parent, text, default, callback)
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Size = UDim2.new(1, -10, 0, 32)
+    ToggleFrame.BackgroundColor3 = Theme.ItemBG
+    ToggleFrame.Parent = parent
+    AddCorner(ToggleFrame, 6)
+    
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Size = UDim2.new(1, 0, 1, 0)
+    ToggleBtn.BackgroundTransparency = 1
+    ToggleBtn.Text = ""
+    ToggleBtn.Parent = ToggleFrame
+    
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(0.8, 0, 1, 0)
+    Label.Position = UDim2.new(0, 8, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = text
+    Label.TextColor3 = Theme.Text
+    Label.Font = Enum.Font.GothamSemibold
+    Label.TextSize = 12
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = ToggleFrame
+    
+    local Indicator = Instance.new("Frame")
+    Indicator.Size = UDim2.new(0, 16, 0, 16)
+    Indicator.Position = UDim2.new(1, -24, 0.5, -8)
+    Indicator.BackgroundColor3 = default and Theme.Accent or Color3.fromRGB(60, 60, 60)
+    Indicator.Parent = ToggleFrame
+    AddCorner(Indicator, 4)
+    
+    local toggled = default
+    
+    if toggled then
+        Indicator.BackgroundColor3 = Theme.Accent
+    end
+    
+    ToggleBtn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        toggled = not toggled
+        TweenService:Create(Indicator, TweenInfo.new(0.3), {BackgroundColor3 = toggled and Theme.Accent or Color3.fromRGB(60, 60, 60)}):Play()
+        callback(toggled)
+    end)
+    
+    return function(state)
+        toggled = state
+        Indicator.BackgroundColor3 = toggled and Theme.Accent or Color3.fromRGB(60, 60, 60)
+    end
+end
+
+local function CreateButton(parent, text, callback)
+    local ButtonFrame = Instance.new("Frame")
+    ButtonFrame.Size = UDim2.new(1, -10, 0, 32)
+    ButtonFrame.BackgroundColor3 = Theme.ItemBG
+    ButtonFrame.Parent = parent
+    AddCorner(ButtonFrame, 6)
+    
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, 0, 1, 0)
+    Btn.BackgroundTransparency = 1
+    Btn.Text = text
+    Btn.TextColor3 = Theme.Accent
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 12
+    Btn.Parent = ButtonFrame
+    
+    Btn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {BackgroundColor3 = Theme.AccentDark}):Play()
+        task.wait(0.1)
+        TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {BackgroundColor3 = Theme.ItemBG}):Play()
+        callback(Btn, ButtonFrame)
+    end)
+end
+
+local function CreateSection(parent, text)
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -10, 0, 20)
+    Label.BackgroundTransparency = 1
+    Label.Text = text
+    Label.TextColor3 = Theme.Accent
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 11
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = parent
+end
+
+local function CreateInput(parent, text, placeholder, defaultVal, callback)
+    local InputFrame = Instance.new("Frame")
+    InputFrame.Size = UDim2.new(1, -10, 0, 32)
+    InputFrame.BackgroundColor3 = Theme.ItemBG
+    InputFrame.Parent = parent
+    AddCorner(InputFrame, 6)
+    
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(0.5, 0, 1, 0)
+    Label.Position = UDim2.new(0, 8, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = text
+    Label.TextColor3 = Theme.Text
+    Label.Font = Enum.Font.GothamSemibold
+    Label.TextSize = 12
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = InputFrame
+    
+    local Box = Instance.new("TextBox")
+    Box.Size = UDim2.new(0.4, 0, 0.7, 0)
+    Box.Position = UDim2.new(0.55, 0, 0.15, 0)
+    Box.BackgroundColor3 = Theme.InputBG
+    Box.Text = defaultVal or ""
+    Box.PlaceholderText = placeholder
+    Box.TextColor3 = Theme.Accent
+    Box.Font = Enum.Font.GothamBold
+    Box.TextSize = 11
+    Box.Parent = InputFrame
+    AddCorner(Box, 4)
+    
+    local BoxStroke = AddStroke(Box, Color3.fromRGB(50, 50, 60), 1)
+    
+    Box.Focused:Connect(function()
+        TweenService:Create(BoxStroke, TweenInfo.new(0.2), {Color = Theme.Accent}):Play()
+    end)
+    
+    Box.FocusLost:Connect(function()
+        TweenService:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(50, 50, 60)}):Play()
+        if callback then
+            callback(Box.Text)
+        end
+    end)
+end
+
+-- ==============================================================================
+-- TABS
+-- ==============================================================================
+local TabCombat = CreateTab("COMBAT")
+CreateSection(TabCombat, "LEGIT MODE")
+CreateToggle(TabCombat, "Legit Mode (1 Target Only)", Config.KnifeLegitMode, function(v)
+    Config.KnifeLegitMode = v
+end)
+
+CreateSection(TabCombat, "MURDERER (KNIFE)")
+CreateToggle(TabCombat, "Knife Throwing TP", Config.KnifeHoming, function(v)
+    Config.KnifeHoming = v
+end)
+CreateInput(TabCombat, "Throw Trigger Dist", "Ex: 25", tostring(Config.KnifeTriggerDist), function(txt)
+    Config.KnifeTriggerDist = tonumber(txt) or 25
+end)
+CreateButton(TabCombat, "KILL ALL (MURDERER)", function(btn, frame)
+    PlayClickSound()
+    KillAll()
+end)
+
+CreateSection(TabCombat, "KNIFE AURA")
+CreateToggle(TabCombat, "Enable Knife Aura", Config.KnifeAura, function(v)
+    Config.KnifeAura = v
+end)
+CreateInput(TabCombat, "Aura Distance", "Ex: 15", tostring(Config.KnifeAuraDist), function(txt)
+    Config.KnifeAuraDist = tonumber(txt) or 15
+end)
+
+CreateSection(TabCombat, "HITBOX EXPANDER")
+CreateToggle(TabCombat, "Enable Expand", Config.HitboxExpand, function(v)
+    Config.HitboxExpand = v
+end)
+CreateInput(TabCombat, "Size (Default: 4)", "Ex: 4", tostring(Config.HitboxSize), function(txt)
+    Config.HitboxSize = tonumber(txt) or 4
+end)
+CreateToggle(TabCombat, "Visible Hitbox", Config.HitboxVisible, function(v)
+    Config.HitboxVisible = v
+end)
+
+CreateSection(TabCombat, "SHERIFF (GUN)")
+CreateToggle(TabCombat, "Silent Aim (Button)", Config.SilentAim, function(v)
+    Config.SilentAim = v
+    ShootGui.Enabled = v
+end)
+CreateToggle(TabCombat, "Aim WallCheck", Config.WallCheck, function(v)
+    Config.WallCheck = v
+end)
+CreateToggle(TabCombat, "Lead Shot (Ping Predict)", Config.LeadShot, function(v)
+    Config.LeadShot = v
+end)
+
+local TabVisuals = CreateTab("VISUALS")
+CreateSection(TabVisuals, "NOTIFICATIONS")
+CreateToggle(TabVisuals, "Notify Roles (Murd/Sher)", Config.NotifyRoles, function(v)
+    Config.NotifyRoles = v
+end)
+CreateToggle(TabVisuals, "Notify Gun Pickup", Config.NotifyGunPickup, function(v)
+    Config.NotifyGunPickup = v
+end)
+CreateToggle(TabVisuals, "Notify Gun Drop", Config.NotifyGunDrop, function(v)
+    Config.NotifyGunDrop = v
+end)
+
+CreateSection(TabVisuals, "MURDERER (RED)")
+CreateToggle(TabVisuals, "Show Highlight", Config.Murder_Fill, function(v)
+    Config.Murder_Fill = v
+end)
+CreateToggle(TabVisuals, "Show Outline", Config.Murder_Outline, function(v)
+    Config.Murder_Outline = v
+end)
+CreateToggle(TabVisuals, "Show Tracer", Config.Murder_Tracer, function(v)
+    Config.Murder_Tracer = v
+end)
+CreateToggle(TabVisuals, "Show Role Text", Config.Murder_Name, function(v)
+    Config.Murder_Name = v
+end)
+CreateToggle(TabVisuals, "Show Distance", Config.Murder_Dist, function(v)
+    Config.Murder_Dist = v
+end)
+
+CreateSection(TabVisuals, "SHERIFF (BLUE)")
+CreateToggle(TabVisuals, "Show Highlight", Config.Sheriff_Fill, function(v)
+    Config.Sheriff_Fill = v
+end)
+CreateToggle(TabVisuals, "Show Outline", Config.Sheriff_Outline, function(v)
+    Config.Sheriff_Outline = v
+end)
+CreateToggle(TabVisuals, "Show Tracer", Config.Sheriff_Tracer, function(v)
+    Config.Sheriff_Tracer = v
+end)
+CreateToggle(TabVisuals, "Show Role Text", Config.Sheriff_Name, function(v)
+    Config.Sheriff_Name = v
+end)
+CreateToggle(TabVisuals, "Show Distance", Config.Sheriff_Dist, function(v)
+    Config.Sheriff_Dist = v
+end)
+
+CreateSection(TabVisuals, "HERO (YELLOW)")
+CreateToggle(TabVisuals, "Show Highlight", Config.Hero_Fill, function(v)
+    Config.Hero_Fill = v
+end)
+CreateToggle(TabVisuals, "Show Outline", Config.Hero_Outline, function(v)
+    Config.Hero_Outline = v
+end)
+CreateToggle(TabVisuals, "Show Tracer", Config.Hero_Tracer, function(v)
+    Config.Hero_Tracer = v
+end)
+CreateToggle(TabVisuals, "Show Role Text", Config.Hero_Name, function(v)
+    Config.Hero_Name = v
+end)
+CreateToggle(TabVisuals, "Show Distance", Config.Hero_Dist, function(v)
+    Config.Hero_Dist = v
+end)
+
+CreateSection(TabVisuals, "INNOCENT (GREEN)")
+CreateToggle(TabVisuals, "Show Highlight", Config.Innocent_Fill, function(v)
+    Config.Innocent_Fill = v
+end)
+CreateToggle(TabVisuals, "Show Outline", Config.Innocent_Outline, function(v)
+    Config.Innocent_Outline = v
+end)
+CreateToggle(TabVisuals, "Show Tracer", Config.Innocent_Tracer, function(v)
+    Config.Innocent_Tracer = v
+end)
+CreateToggle(TabVisuals, "Show Role Text", Config.Innocent_Name, function(v)
+    Config.Innocent_Name = v
+end)
+CreateToggle(TabVisuals, "Show Distance", Config.Innocent_Dist, function(v)
+    Config.Innocent_Dist = v
+end)
+
+CreateSection(TabVisuals, "LOBBY / DEAD (GREY)")
+CreateToggle(TabVisuals, "Show Highlight", Config.Lobby_Fill, function(v)
+    Config.Lobby_Fill = v
+end)
+CreateToggle(TabVisuals, "Show Outline", Config.Lobby_Outline, function(v)
+    Config.Lobby_Outline = v
+end)
+CreateToggle(TabVisuals, "Show Tracer", Config.Lobby_Tracer, function(v)
+    Config.Lobby_Tracer = v
+end)
+CreateToggle(TabVisuals, "Show Role Text", Config.Lobby_Name, function(v)
+    Config.Lobby_Name = v
+end)
+CreateToggle(TabVisuals, "Show Distance", Config.Lobby_Dist, function(v)
+    Config.Lobby_Dist = v
+end)
+
+CreateSection(TabVisuals, "GUN DROP")
+CreateToggle(TabVisuals, "Show Highlight", Config.Gun_Fill, function(v)
+    Config.Gun_Fill = v
+end)
+CreateToggle(TabVisuals, "Show Outline", Config.Gun_Outline, function(v)
+    Config.Gun_Outline = v
+end)
+CreateToggle(TabVisuals, "Show Name", Config.Gun_Name, function(v)
+    Config.Gun_Name = v
+end)
+CreateToggle(TabVisuals, "Show Distance", Config.Gun_Dist, function(v)
+    Config.Gun_Dist = v
+end)
+
+local TabLegit = CreateTab("LEGIT / PLAYER")
+CreateSection(TabLegit, "FLING")
+CreateButton(TabLegit, "FLING (SHERIFF)", function(btn, frame)
+    ToggleFling("Sheriff")
+    if flingActive and flingTargetRole == "Sheriff" then
+        btn.Text = "FLING SHERIFF ✓"
+        btn.TextColor3 = Color3.fromRGB(0, 100, 255)
+        task.delay(1, function()
+            if btn then
+                btn.Text = "FLING (SHERIFF)"
+                btn.TextColor3 = Theme.Accent
+            end
+        end)
+    else
+        btn.Text = "FLING (SHERIFF)"
+        btn.TextColor3 = Theme.Accent
+    end
+end)
+
+CreateButton(TabLegit, "FLING (MURDERER)", function(btn, frame)
+    ToggleFling("Murderer")
+    if flingActive and flingTargetRole == "Murderer" then
+        btn.Text = "FLING MURDERER ✓"
+        btn.TextColor3 = Color3.fromRGB(255, 50, 50)
+        task.delay(1, function()
+            if btn then
+                btn.Text = "FLING (MURDERER)"
+                btn.TextColor3 = Theme.Accent
+            end
+        end)
+    else
+        btn.Text = "FLING (MURDERER)"
+        btn.TextColor3 = Theme.Accent
+    end
+end)
+
+CreateSection(TabLegit, "PROTECTION")
+CreateToggle(TabLegit, "Anti-Fling", Config.AntiFling, function(v)
+    Config.AntiFling = v
+end)
+
+CreateSection(TabLegit, "AUTO GRAB")
+CreateToggle(TabLegit, "Grab Gun", Config.AutoGrabGun, function(v)
+    Config.AutoGrabGun = v
+end)
+CreateToggle(TabLegit, "Show Grab Floating Btn", Config.ShowGrabBtn, function(v)
+    Config.ShowGrabBtn = v
+end)
+CreateButton(TabLegit, "FORCE GRAB GUN (Click)", function()
+    PlayClickSound()
+    if foundGunDrop and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local Root = LocalPlayer.Character.HumanoidRootPart
+        foundGunDrop.CanCollide = false
+        foundGunDrop.CFrame = Root.CFrame
+        foundGunDrop.Velocity = Vector3.new(0,0,0)
+        NexusNotify("GRAB", "Gun Teleported!", 1)
+        GrabBtn.Text = "SUCCESS"
+        GrabBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
+        GrabStroke.Color = Color3.fromRGB(0, 255, 100)
+        
+        task.delay(0.5, function()
+            GrabBtn.Text = "GRAB GUN"
+            GrabBtn.TextColor3 = Theme.Accent
+            GrabStroke.Color = Theme.Accent
+        end)
+    else
+        NexusNotify("INFO", "No gun on map yet.", 1)
+    end
+end)
+CreateInput(TabLegit, "Grab Dist", "Ex: 15", tostring(Config.GrabDistance), function(txt)
+    Config.GrabDistance = tonumber(txt) or 15
+end)
+
+CreateSection(TabLegit, "GHOST / INVISIBLE")
+CreateToggle(TabLegit, "Show Ghost Button", Config.ShowInvisBtn, function(v)
+    Config.ShowInvisBtn = v
+end)
+
+CreateSection(TabLegit, "MOVEMENT MODS")
+CreateToggle(TabLegit, "Enable WalkSpeed", Config.WalkSpeedEnabled, function(v)
+    Config.WalkSpeedEnabled = v
+end)
+CreateInput(TabLegit, "Speed (Def: 16)", "Ex: 24", tostring(Config.WalkSpeedValue), function(txt)
+    Config.WalkSpeedValue = tonumber(txt) or 16
+end)
+CreateToggle(TabLegit, "Enable JumpPower", Config.JumpPowerEnabled, function(v)
+    Config.JumpPowerEnabled = v
+end)
+CreateInput(TabLegit, "Power (Def: 50)", "Ex: 80", tostring(Config.JumpPowerValue), function(txt)
+    Config.JumpPowerValue = tonumber(txt) or 50
+end)
+
+-- ==============================================================================
+-- FUNÇÕES PARA TEMA CUSTOMIZADO (CORRIGIDO)
+-- ==============================================================================
+local function ApplyThemeToGUI()
+    -- Atualizar ToggleButton
+    if ToggleButton then
+        ToggleButton.BackgroundColor3 = Theme.Background
+        ToggleButton.TextColor3 = Theme.Accent
+        local toggleStroke = ToggleButton:FindFirstChildOfClass("UIStroke")
+        if toggleStroke then
+            toggleStroke.Color = Theme.Accent
+        end
+    end
+    
+    -- Atualizar MainFrame
+    if MainFrame then
+        MainFrame.BackgroundColor3 = Theme.Background
+        local mainStroke = MainFrame:FindFirstChildOfClass("UIStroke")
+        if mainStroke then
+            mainStroke.Color = Theme.Accent
+        end
+    end
+    
+    -- Atualizar Sidebar
+    if Sidebar then
+        Sidebar.BackgroundColor3 = Theme.Sidebar
+    end
+    
+    -- Atualizar TitleLabel (título da GUI)
+    if TitleLabel then
+        TitleLabel.TextColor3 = Theme.Accent
+    end
+    
+    -- Atualizar botões das abas
+    for _, tab in ipairs(tabs) do
+        if tab.Btn then
+            tab.Btn.BackgroundColor3 = Theme.Background
+            tab.Btn.TextColor3 = Theme.TextDim
+            if tab.Frame and tab.Frame.Visible then
+                tab.Btn.BackgroundColor3 = Theme.AccentDark
+                tab.Btn.TextColor3 = Theme.Text
+            end
+        end
+    end
+    
+    -- Atualizar ShootButton
+    if ShootButton then
+        ShootButton.BackgroundColor3 = Theme.Background
+        ShootButton.TextColor3 = Theme.Accent
+        local shootStroke = ShootButton:FindFirstChildOfClass("UIStroke")
+        if shootStroke then
+            shootStroke.Color = Theme.Accent
+            local gradient = shootStroke:FindFirstChildOfClass("UIGradient")
+            if gradient then
+                gradient.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0.00, Theme.Accent),
+                    ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1.00, Theme.Accent)
+                }
+            end
+        end
+    end
+    
+    -- Atualizar GrabFrame
+    if GrabFrame then
+        GrabFrame.BackgroundColor3 = Theme.Background
+        local grabStroke = GrabFrame:FindFirstChildOfClass("UIStroke")
+        if grabStroke then
+            grabStroke.Color = Theme.Accent
+        end
+    end
+    
+    if GrabBtn then
+        GrabBtn.TextColor3 = Theme.Accent
+    end
+    
+    -- Atualizar InvisFrame
+    if InvisFrame then
+        InvisFrame.BackgroundColor3 = Theme.Background
+        local invisStroke = InvisFrame:FindFirstChildOfClass("UIStroke")
+        if invisStroke then
+            invisStroke.Color = Theme.Ghost
+        end
+    end
+    
+    if InvisBtn then
+        InvisBtn.TextColor3 = Theme.Ghost
+    end
+    
+    -- Atualizar botões de tema (na aba SETTINGS)
+    if FirstRow then
+        for _, child in ipairs(FirstRow:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BackgroundColor3 = Theme.ItemBG
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+    end
+    
+    if SecondRow then
+        for _, child in ipairs(SecondRow:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BackgroundColor3 = Theme.ItemBG
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+    end
+    
+    -- Atualizar todas as instâncias que usam as cores do tema
+    for _, obj in pairs(ScreenGui:GetDescendants()) do
+        if obj:IsA("Frame") and obj.BackgroundColor3 == Theme.Background then
+            obj.BackgroundColor3 = Theme.Background
+        elseif obj:IsA("TextLabel") or obj:IsA("TextButton") then
+            if obj.TextColor3 == Theme.Accent then
+                obj.TextColor3 = Theme.Accent
+            elseif obj.TextColor3 == Theme.Text then
+                obj.TextColor3 = Theme.Text
+            elseif obj.TextColor3 == Theme.TextDim then
+                obj.TextColor3 = Theme.TextDim
+            end
+        end
+    end
+end
+
+local function SetTheme(themeName)
+    if Themes[themeName] then
+        Theme = Themes[themeName]
+        Config.CustomTheme = themeName
+        
+        -- Salvar imediatamente ao mudar o tema
+        if writefile then
+            local success, encoded = pcall(function()
+                return HttpService:JSONEncode(Config)
+            end)
+            if success then
+                writefile(ConfigFileName, encoded)
+            end
+        end
+        
+        ApplyThemeToGUI()
+        NexusNotify("THEME", "Theme changed to " .. themeName, 3)
+        return true
+    end
+    return false
+end
+
+-- ==============================================================================
+-- TAB SETTINGS COM CUSTOM THEME (BOTÕES)
+-- ==============================================================================
+local TabSettings = CreateTab("SETTINGS")
+
+CreateSection(TabSettings, "CUSTOM THEME")
+
+local themeNames = {"Original", "Red", "Blue", "Verde", "Purple", "Yellow"}
+
+FirstRow = Instance.new("Frame")
+FirstRow.Size = UDim2.new(1, -10, 0, 32)
+FirstRow.BackgroundTransparency = 1
+FirstRow.Parent = TabSettings
+
+for i = 1, 3 do
+    local themeName = themeNames[i]
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0.32, -5, 1, 0)
+    Btn.Position = UDim2.new((i-1) * 0.33, 0, 0, 0)
+    Btn.BackgroundColor3 = Theme.ItemBG
+    Btn.Text = themeName
+    Btn.TextColor3 = Config.CustomTheme == themeName and Theme.Accent or Theme.TextDim
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 11
+    Btn.Parent = FirstRow
+    AddCorner(Btn, 4)
+    
+    Btn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        SetTheme(themeName)
+        for j = 1, 3 do
+            local child = FirstRow:GetChildren()[j]
+            if child:IsA("TextButton") then
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+        for j = 1, 3 do
+            local child = SecondRow:GetChildren()[j]
+            if child:IsA("TextButton") then
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+    end)
+end
+
+SecondRow = Instance.new("Frame")
+SecondRow.Size = UDim2.new(1, -10, 0, 32)
+SecondRow.Position = UDim2.new(0, 0, 0, 38)
+SecondRow.BackgroundTransparency = 1
+SecondRow.Parent = TabSettings
+
+for i = 4, 6 do
+    local themeName = themeNames[i]
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0.32, -5, 1, 0)
+    Btn.Position = UDim2.new((i-4) * 0.33, 0, 0, 0)
+    Btn.BackgroundColor3 = Theme.ItemBG
+    Btn.Text = themeName
+    Btn.TextColor3 = Config.CustomTheme == themeName and Theme.Accent or Theme.TextDim
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 11
+    Btn.Parent = SecondRow
+    AddCorner(Btn, 4)
+    
+    Btn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        SetTheme(themeName)
+        for j = 1, 3 do
+            local child = FirstRow:GetChildren()[j]
+            if child:IsA("TextButton") then
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+        for j = 1, 3 do
+            local child = SecondRow:GetChildren()[j]
+            if child:IsA("TextButton") then
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+    end)
+end
+
+CreateSection(TabSettings, "VISUAL SETTINGS")
+CreateToggle(TabSettings, "Instant Role Reveal", Config.InstantRole, function(v)
+    Config.InstantRole = v
+end)
+CreateToggle(TabSettings, "Anti Lag (Remove Shadows)", Config.AntiLag, function(v)
+    Config.AntiLag = v
+    if v then
+        Lighting.GlobalShadows = false
+        Lighting.ShadowSoftness = 0
+        Lighting.ShadowColor = Color3.new(0,0,0)
+    else
+        Lighting.GlobalShadows = true
+        Lighting.ShadowSoftness = 1
+    end
+end)
+
+CreateSection(TabSettings, "CONFIGURATION")
+CreateButton(TabSettings, "SAVE CONFIGURATION", function(btn, frame)
+    SaveConfig(btn, frame)
+end)
+CreateButton(TabSettings, "RESET SETTINGS", function(btn, frame)
+    Config = DeepCopy(DefaultConfig)
+    Config.GuiPositions = {}
+    SetTheme("Original")
+    
+    if writefile then
+        pcall(function()
+            writefile(ConfigFileName, HttpService:JSONEncode(Config))
+        end)
+    end
+    
+    btn.Text = "RESET DONE!"
+    btn.TextColor3 = Color3.fromRGB(0, 255, 100)
+    
+    task.delay(1, function()
+        btn.Text = "RESET SETTINGS"
+        btn.TextColor3 = Theme.Accent
+        NexusNotify("RESET", "Settings reset!", 5)
+    end)
+end)
+
+-- ==============================================================================
+-- SAVE SYSTEM & POSITIONS (CORRIGIDO)
+-- ==============================================================================
+local function SaveConfig(btnLabel, btnFrame)
+    if writefile then
+        -- Garantir que o tema atual esteja salvo
+        Config.CustomTheme = Config.CustomTheme or "Original"
+        
+        Config.GuiPositions = {}
+        if MainFrame then
+            Config.GuiPositions["MainFrame"] = {
+                MainFrame.Position.X.Scale,
+                MainFrame.Position.X.Offset,
+                MainFrame.Position.Y.Scale,
+                MainFrame.Position.Y.Offset
+            }
+        end
+        if ToggleButton then
+            Config.GuiPositions["ToggleButton"] = {
+                ToggleButton.Position.X.Scale,
+                ToggleButton.Position.X.Offset,
+                ToggleButton.Position.Y.Scale,
+                ToggleButton.Position.Y.Offset
+            }
+        end
+        if ShootButton then
+            Config.GuiPositions["ShootButton"] = {
+                ShootButton.Position.X.Scale,
+                ShootButton.Position.X.Offset,
+                ShootButton.Position.Y.Scale,
+                ShootButton.Position.Y.Offset
+            }
+        end
+        if GrabFrame then
+            Config.GuiPositions["GrabFrame"] = {
+                GrabFrame.Position.X.Scale,
+                GrabFrame.Position.X.Offset,
+                GrabFrame.Position.Y.Scale,
+                GrabFrame.Position.Y.Offset
+            }
+        end
+        if InvisFrame then
+            Config.GuiPositions["InvisFrame"] = {
+                InvisFrame.Position.X.Scale,
+                InvisFrame.Position.X.Offset,
+                InvisFrame.Position.Y.Scale,
+                InvisFrame.Position.Y.Offset
+            }
+        end
+
+        local success, encoded = pcall(function()
+            return HttpService:JSONEncode(Config)
+        end)
+        
+        if success then
+            writefile(ConfigFileName, encoded)
+            
+            if btnLabel then
+                btnLabel.Text = "SAVED!"
+                btnLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+                
+                -- Aplicar tema imediatamente após salvar
+                ApplyThemeToGUI()
+                
+                task.delay(1, function()
+                    if btnLabel then
+                        btnLabel.Text = "SAVE CONFIGURATION"
+                        btnLabel.TextColor3 = Theme.Accent
+                    end
+                end)
+            else
+                NexusNotify("CONFIG", "Configuration saved!", 3)
+            end
+        else
+            if btnLabel then
+                btnLabel.Text = "ERROR!"
+                btnLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                task.delay(1, function()
+                    btnLabel.Text = "SAVE CONFIGURATION"
+                    btnLabel.TextColor3 = Theme.Accent
+                end)
+            end
+        end
+    end
+end
+
+-- ==============================================================================
+-- FUNÇÕES ADICIONAIS PARA BOTÕES
+-- ==============================================================================
 local function ToggleInvis()
     PlayClickSound()
     InvisActive = not InvisActive
@@ -427,7 +2212,6 @@ end
 
 InvisBtn.MouseButton1Click:Connect(ToggleInvis)
 
--- Sistema de invisibilidade
 RunService.Heartbeat:Connect(function()
     if InvisActive then
         local Char = LocalPlayer.Character
@@ -442,7 +2226,9 @@ RunService.Heartbeat:Connect(function()
                 
                 Root.CFrame = invisCF
                 Hum.CameraOffset = invisCF:ToObjectSpace(CFrame.new(oldCF.Position)).Position
+                
                 RunService.RenderStepped:Wait()
+                
                 Root.CFrame = oldCF
                 Hum.CameraOffset = oldCamOffset
             end
@@ -457,7 +2243,6 @@ LocalPlayer.CharacterAdded:Connect(function()
     InvisStroke.Color = Theme.Ghost
 end)
 
--- Animações para os botões
 task.spawn(function()
     while true do
         if GrabFrame and GrabFrame.Visible then
@@ -493,1569 +2278,28 @@ task.spawn(function()
     end
 end)
 
--- Função para pegar a arma
-local function AttemptGrab()
-    PlayClickSound()
-    
-    if foundGunDrop and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local Root = LocalPlayer.Character.HumanoidRootPart
-        foundGunDrop.CanCollide = false
-        foundGunDrop.CFrame = Root.CFrame
-        foundGunDrop.Velocity = Vector3.new(0, 0, 0)
-        
-        NexusNotify("GRAB", "Gun Teleported!", 1)
-        GrabBtn.Text = "SUCCESS"
-        GrabBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
-        GrabStroke.Color = Color3.fromRGB(0, 255, 100)
-        
-        task.delay(0.5, function()
-            GrabBtn.Text = "GRAB GUN"
-            GrabBtn.TextColor3 = Theme.Accent
-            GrabStroke.Color = Theme.Accent
-        end)
-    else
-        NexusNotify("INFO", "No gun on map yet.", 1)
-    end
-end
-
-GrabBtn.MouseButton1Click:Connect(AttemptGrab)
-
 -- ==============================================================================
--- SISTEMA DE SALVAMENTO
+-- INICIALIZAÇÃO FINAL (CORRIGIDA)
 -- ==============================================================================
-local function SaveConfig(btnLabel, btnFrame)
-    if hasFileFunctions then
-        -- Salvar posições
-        Config.GuiPositions = {}
-        
-        if MainFrame then
-            local pos = MainFrame.Position
-            Config.GuiPositions["MainFrame"] = {
-                pos.X.Scale, pos.X.Offset,
-                pos.Y.Scale, pos.Y.Offset
-            }
-        end
-        
-        if ToggleButton then
-            local pos = ToggleButton.Position
-            Config.GuiPositions["ToggleButton"] = {
-                pos.X.Scale, pos.X.Offset,
-                pos.Y.Scale, pos.Y.Offset
-            }
-        end
-        
-        if ShootButton then
-            local pos = ShootButton.Position
-            Config.GuiPositions["ShootButton"] = {
-                pos.X.Scale, pos.X.Offset,
-                pos.Y.Scale, pos.Y.Offset
-            }
-        end
-        
-        if GrabFrame then
-            local pos = GrabFrame.Position
-            Config.GuiPositions["GrabFrame"] = {
-                pos.X.Scale, pos.X.Offset,
-                pos.Y.Scale, pos.Y.Offset
-            }
-        end
-        
-        if InvisFrame then
-            local pos = InvisFrame.Position
-            Config.GuiPositions["InvisFrame"] = {
-                pos.X.Scale, pos.X.Offset,
-                pos.Y.Scale, pos.Y.Offset
-            }
-        end
-        
-        local success, encoded = pcall(function()
-            return HttpService:JSONEncode(Config)
-        end)
-        
-        if success then
-            writefile(ConfigFileName, encoded)
-            
-            if btnLabel then
-                btnLabel.Text = "SAVED!"
-                btnLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-                
-                task.delay(1, function()
-                    if btnLabel then
-                        btnLabel.Text = "SAVE CONFIGURATION"
-                        btnLabel.TextColor3 = Theme.Accent
-                    end
-                end)
-            end
-        end
-    else
-        if btnLabel then
-            btnLabel.Text = "NO SAVE SYSTEM"
-            btnLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            
-            task.delay(1, function()
-                if btnLabel then
-                    btnLabel.Text = "SAVE CONFIGURATION"
-                    btnLabel.TextColor3 = Theme.Accent
-                end
-            end)
-        end
-    end
-end
-
--- ==============================================================================
--- GUI DE TIRO (SILENT AIM)
--- ==============================================================================
-local function GetLeadShotPosition(targetRootPart)
-    local currentPos = targetRootPart.Position
-    local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
-    local predictedPos = currentPos + (targetRootPart.Velocity * ping * 1.5)
-    return predictedPos
-end
-
-ShootGui = Instance.new("ScreenGui")
-ShootGui.Name = "ShootGui_Overlay_V19"
-ShootGui.Parent = CoreGui
-ShootGui.Enabled = false
-ShootGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-ShootButton = Instance.new("TextButton")
-ShootButton.Parent = ShootGui
-ShootButton.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-ShootButton.Position = UDim2.new(0.65, 0, 0.6, 0)
-ShootButton.Size = UDim2.new(0, 220, 0, 80)
-ShootButton.Font = Enum.Font.GothamBold
-ShootButton.Text = "NEXUS AIM"
-ShootButton.TextColor3 = Color3.fromRGB(100, 200, 255)
-ShootButton.TextSize = 24
-ShootButton.AutoButtonColor = false
-ShootButton.TextStrokeTransparency = 0.8
-
-local ShootCorner = AddCorner(ShootButton, 10)
-local ShootStroke = AddStroke(ShootButton, Theme.Accent, 2)
-local ShootGradient = Instance.new("UIGradient")
-ShootGradient.Parent = ShootStroke
-ShootGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0.00, Theme.Accent),
-    ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 255, 255)),
-    ColorSequenceKeypoint.new(1.00, Theme.Accent)
-})
-ShootGradient.Rotation = 45
-
--- Animação do botão de tiro
-task.spawn(function()
-    while ShootGui do
-        if ShootGui.Enabled then
-            ShootGradient.Rotation = (ShootGradient.Rotation + 2) % 360
-            local t = tick() % 2
-            local alpha = 0.5 + 0.5 * math.sin(t * math.pi)
-            ShootButton.TextColor3 = Theme.Accent:Lerp(Color3.fromRGB(255, 255, 255), alpha)
-        end
-        task.wait(0.03)
-    end
-end)
-
-MakeDraggable(ShootButton)
-
--- Aplicar estado salvo
-if Config.SilentAim then
-    ShootGui.Enabled = true
-end
-
--- Função de tiro
-ShootButton.MouseButton1Click:Connect(function()
-    PlayClickSound()
-    
-    -- Encontrar a arma
-    local gun = nil
-    local char = LocalPlayer.Character
-    
-    if char then
-        for _, i in ipairs(char:GetChildren()) do
-            if i:IsA("Tool") and (string.find(string.lower(i.Name), "gun") or i.Name == "Revolver") then
-                gun = i
-                break
-            end
-        end
-        
-        if not gun then
-            for _, i in ipairs(LocalPlayer.Backpack:GetChildren()) do
-                if i:IsA("Tool") and (string.find(string.lower(i.Name), "gun") or i.Name == "Revolver") then
-                    gun = i
-                    break
-                end
-            end
-        end
-    end
-    
-    -- Feedback visual
-    ShootButton.Text = "FIRED"
-    ShootStroke.Color = Color3.fromRGB(255, 50, 50)
-    
-    task.delay(0.2, function()
-        ShootButton.Text = "NEXUS AIM"
-        ShootStroke.Color = Theme.Accent
-    end)
-    
-    if not gun then
-        NexusNotify("ERROR", "No gun found!", 1)
-        return
-    end
-    
-    -- Encontrar alvo (Murderer)
-    local targetPlr = nil
-    for plrName, role in pairs(RoleCache) do
-        if role == "Murderer" then
-            targetPlr = Players:FindFirstChild(plrName)
-            break
-        end
-    end
-    
-    if not targetPlr or not targetPlr.Character or not targetPlr.Character:FindFirstChild("HumanoidRootPart") then
-        NexusNotify("ERROR", "No Murderer found!", 1)
-        return
-    end
-    
-    -- Wall Check
-    if Config.WallCheck then
-        local origin = Camera.CFrame.Position
-        local targetPosRaw = targetPlr.Character.HumanoidRootPart.Position
-        local direction = (targetPosRaw - origin).Unit * (targetPosRaw - origin).Magnitude
-        
-        local rayParams = RaycastParams.new()
-        rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPlr.Character, workspace:FindFirstChild("GunDrop")}
-        rayParams.FilterType = Enum.RaycastFilterType.Exclude
-        
-        if workspace:Raycast(origin, direction, rayParams) then
-            ShootButton.Text = "BLOCKED"
-            task.delay(0.2, function()
-                ShootButton.Text = "NEXUS AIM"
-            end)
-            return
-        end
-    end
-    
-    -- Equipar arma se necessário
-    if gun.Parent == LocalPlayer.Backpack then
-        LocalPlayer.Character.Humanoid:EquipTool(gun)
-        task.wait()
-    end
-    
-    -- Calcular posição do alvo
-    local targetRoot = targetPlr.Character.HumanoidRootPart
-    local targetPos = targetRoot.Position
-    
-    if Config.LeadShot then
-        targetPos = GetLeadShotPosition(targetRoot)
-    end
-    
-    -- Atirar
-    local args = {
-        CFrame.new(Camera.CFrame.Position, targetPos),
-        CFrame.new(targetPos)
-    }
-    
-    if gun:FindFirstChild("Shoot") then
-        gun.Shoot:FireServer(unpack(args))
-    end
-end)
-
--- ==============================================================================
--- SISTEMA DE ROLES
--- ==============================================================================
-local function getRoles()
-    if not playerDataRemote then
-        -- Procurar o remote de dados do jogador
-        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-            if obj.Name == "GetPlayerData" and obj:IsA("RemoteFunction") then
-                playerDataRemote = obj
-                break
-            end
-        end
-    end
-    
-    if playerDataRemote then
-        local success, data = pcall(function()
-            return playerDataRemote:InvokeServer()
-        end)
-        
-        if success and data then
-            local newRoles = {}
-            local hasMurder = false
-            
-            for plr, plrData in pairs(data) do
-                if plrData.Dead or not plrData.Role or plrData.Role == "" then
-                    newRoles[plr] = "Lobby"
-                else
-                    newRoles[plr] = plrData.Role
-                    
-                    if plrData.Role == "Murderer" then
-                        hasMurder = true
-                    end
-                end
-            end
-            
-            if not hasMurder then
-                rolesNotified = false
-            end
-            
-            return newRoles
-        end
-    end
-    
-    return nil
-end
-
--- Sistema de alerta de role
-local function ShowRoleAlert(role)
-    if not Config.InstantRole then return end
-    if role == "Hero" then return end
-    
-    if CoreGui:FindFirstChild("NexusRoleAlert") then
-        CoreGui.NexusRoleAlert:Destroy()
-    end
-    
-    local AlertGui = Instance.new("ScreenGui")
-    AlertGui.Name = "NexusRoleAlert"
-    AlertGui.Parent = CoreGui
-    AlertGui.IgnoreGuiInset = true
-    
-    local MainLabel = Instance.new("TextLabel")
-    MainLabel.Parent = AlertGui
-    MainLabel.Size = UDim2.new(1, 0, 0, 100)
-    MainLabel.Position = UDim2.new(0, 0, 0.3, 0)
-    MainLabel.BackgroundTransparency = 1
-    MainLabel.Font = Enum.Font.GothamBlack
-    MainLabel.Text = "YOU ARE " .. string.upper(role)
-    MainLabel.TextColor3 = RoleColors[role] or Color3.fromRGB(255, 255, 255)
-    MainLabel.TextSize = 0
-    MainLabel.TextStrokeTransparency = 0.5
-    MainLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    
-    TweenService:Create(MainLabel, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {TextSize = 60}):Play()
-    
-    local sound = Instance.new("Sound", AlertGui)
-    sound.SoundId = "rbxassetid://10548111966"
-    sound.Volume = 2
-    sound:Play()
-    
-    task.delay(4, function()
-        if MainLabel then
-            TweenService:Create(MainLabel, TweenInfo.new(0.5), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
-            task.wait(0.5)
-            AlertGui:Destroy()
-        end
-    end)
-end
-
--- Atualizar roles em tempo real
-task.spawn(function()
-    while true do
-        local roles = getRoles()
-        if roles then
-            RoleCache = roles
-            
-            local myRole = RoleCache[LocalPlayer.Name] or "Lobby"
-            
-            if myRole ~= "Lobby" and myRole ~= lastMyRole then
-                lastMyRole = myRole
-                ShowRoleAlert(myRole)
-            elseif myRole == "Lobby" then
-                lastMyRole = "Lobby"
-            end
-            
-            -- Notificar roles se configurado
-            if Config.NotifyRoles and not rolesNotified then
-                local murderer = "None"
-                local sheriff = "None"
-                
-                for p, r in pairs(RoleCache) do
-                    if r == "Murderer" then
-                        murderer = p
-                    elseif r == "Sheriff" then
-                        sheriff = p
-                    end
-                end
-                
-                if murderer ~= "None" then
-                    NexusNotify("ROLES REVEALED", "Murderer: " .. murderer .. "\nSheriff: " .. sheriff, 5)
-                    rolesNotified = true
-                end
-            end
-        end
-        
-        task.wait(0.25)
-    end
-end)
-
--- ==============================================================================
--- SISTEMA DE ARMA NO CHÃO
--- ==============================================================================
-local wasGunDropped = false
-
-task.spawn(function()
-    while true do
-        local dropped = Workspace:FindFirstChild("GunDrop", true)
-        foundGunDrop = dropped
-        
-        -- Mostrar/ocultar botões
-        if GrabFrame then
-            GrabFrame.Visible = Config.ShowGrabBtn
-        end
-        
-        if InvisFrame then
-            InvisFrame.Visible = Config.ShowInvisBtn
-        end
-        
-        -- Notificações de arma
-        if dropped and not wasGunDropped then
-            if Config.NotifyGunDrop then
-                NexusNotify("GUN DROPPED", "The gun has been dropped on the map!", 4)
-            end
-        end
-        
-        if wasGunDropped and not dropped and Config.NotifyGunPickup then
-            task.wait(0.5)
-            for _, p in ipairs(Players:GetPlayers()) do
-                local char = p.Character
-                if char and (char:FindFirstChild("Gun") or char:FindFirstChild("Revolver") or
-                   (p.Backpack and (p.Backpack:FindFirstChild("Gun") or p.Backpack:FindFirstChild("Revolver")))) then
-                    NexusNotify("GUN TAKEN", p.Name .. " picked up the gun!", 4)
-                    break
-                end
-            end
-        end
-        
-        wasGunDropped = (dropped ~= nil)
-        task.wait(0.2)
-    end
-end)
-
--- ==============================================================================
--- MODIFICAÇÕES DE PERSONAGEM
--- ==============================================================================
-RunService.RenderStepped:Connect(function()
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then
-            -- WalkSpeed
-            if Config.WalkSpeedEnabled then
-                hum.WalkSpeed = Config.WalkSpeedValue
-            end
-            
-            -- JumpPower
-            if Config.JumpPowerEnabled then
-                hum.UseJumpPower = true
-                hum.JumpPower = Config.JumpPowerValue
-            end
-        end
-    end
-end)
-
--- ==============================================================================
--- SISTEMA DE FACADA
--- ==============================================================================
-local function GetKnifeRemote()
-    local char = LocalPlayer.Character
-    if not char then return nil end
-    
-    local tool = char:FindFirstChild("Knife") or LocalPlayer.Backpack:FindFirstChild("Knife")
-    if tool then
-        return tool:FindFirstChild("HandleTouched", true)
-    end
-    
-    return nil
-end
-
--- Hitbox Expander
-RunService.RenderStepped:Connect(function()
-    if Config.HitboxExpand then
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character then
-                local root = plr.Character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    root.Size = Vector3.new(Config.HitboxSize, Config.HitboxSize, Config.HitboxSize)
-                    root.Transparency = Config.HitboxVisible and 0.5 or 1
-                    root.CanCollide = false
-                end
-            end
-        end
-    end
-end)
-
--- Knife Aura
-task.spawn(function()
-    while true do
-        if Config.KnifeAura and RoleCache[LocalPlayer.Name] == "Murderer" then
-            local myChar = LocalPlayer.Character
-            if myChar then
-                local knife = myChar:FindFirstChild("Knife")
-                if knife and knife:FindFirstChild("Handle") then
-                    local targetFound = false
-                    
-                    for _, enemy in ipairs(Players:GetPlayers()) do
-                        if enemy ~= LocalPlayer and enemy.Character then
-                            local eRoot = enemy.Character:FindFirstChild("HumanoidRootPart")
-                            local eHum = enemy.Character:FindFirstChild("Humanoid")
-                            local eRole = RoleCache[enemy.Name]
-                            
-                            if eRoot and eHum and eHum.Health > 0 and eRole ~= "Murderer" and eRole ~= "Lobby" then
-                                local dist = (eRoot.Position - myChar.HumanoidRootPart.Position).Magnitude
-                                if dist <= Config.KnifeAuraDist then
-                                    eRoot.CFrame = knife.Handle.CFrame
-                                    eRoot.Velocity = Vector3.new(0, 0, 0)
-                                    eRoot.RotVelocity = Vector3.new(0, 0, 0)
-                                    
-                                    local remote = GetKnifeRemote()
-                                    if remote then
-                                        pcall(function()
-                                            remote:FireServer(eRoot)
-                                        end)
-                                    end
-                                    
-                                    if Config.KnifeLegitMode then
-                                        targetFound = true
-                                        break
-                                    end
-                                end
-                            end
-                        end
-                        
-                        if Config.KnifeLegitMode and targetFound then
-                            break
-                        end
-                    end
-                end
-            end
-        end
-        task.wait()
-    end
-end)
-
--- Knife Homing (para facas arremessadas)
-RunService.RenderStepped:Connect(function()
-    if Config.KnifeHoming and RoleCache[LocalPlayer.Name] == "Murderer" then
-        for _, obj in ipairs(Workspace:GetChildren()) do
-            if obj.Name == "ThrowingKnife" and not obj:IsDescendantOf(LocalPlayer.Character) then
-                local targetFound = false
-                
-                for _, plr in ipairs(Players:GetPlayers()) do
-                    if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                        local enemyRoot = plr.Character.HumanoidRootPart
-                        local role = RoleCache[plr.Name]
-                        
-                        if role ~= "Lobby" and role ~= "Murderer" then
-                            local knifePos = nil
-                            
-                            if obj:FindFirstChild("BladePosition") then
-                                knifePos = obj.BladePosition.Position
-                            elseif obj:IsA("BasePart") then
-                                knifePos = obj.Position
-                            elseif obj:FindFirstChild("Handle") then
-                                knifePos = obj.Handle.Position
-                            end
-                            
-                            if knifePos then
-                                local dist = (knifePos - enemyRoot.Position).Magnitude
-                                if dist <= Config.KnifeTriggerDist then
-                                    enemyRoot.CFrame = CFrame.new(knifePos)
-                                    enemyRoot.Velocity = Vector3.new(0, 0, 0)
-                                    
-                                    local remote = GetKnifeRemote()
-                                    if remote then
-                                        pcall(function()
-                                            remote:FireServer(enemyRoot)
-                                        end)
-                                    end
-                                    
-                                    if Config.KnifeLegitMode then
-                                        targetFound = true
-                                        break
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    
-                    if Config.KnifeLegitMode and targetFound then
-                        break
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- Anti-Fling
-RunService.Stepped:Connect(function()
-    if Config.AntiFling then
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character then
-                for _, part in pairs(plr.Character:GetDescendants()) do
-                    if part:IsA("BasePart") and part.CanCollide then
-                        part.CanCollide = false
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- Auto Grab Gun
-RunService.Heartbeat:Connect(function()
-    if Config.AutoGrabGun then
-        local Char = LocalPlayer.Character
-        local Root = Char and Char:FindFirstChild("HumanoidRootPart")
-        
-        if Char and Root and RoleCache[LocalPlayer.Name] ~= "Murderer" and RoleCache[LocalPlayer.Name] ~= "Sheriff" then
-            local gun = Workspace:FindFirstChild("GunDrop", true)
-            if gun and (gun.Position - Root.Position).Magnitude <= Config.GrabDistance then
-                gun.CanCollide = false
-                gun.CFrame = Root.CFrame
-                gun.Velocity = Vector3.new(0, 0, 0)
-            end
-        end
-    end
-end)
-
--- ==============================================================================
--- FUNÇÃO KILL ALL
--- ==============================================================================
-local function KillAll()
-    if RoleCache[LocalPlayer.Name] ~= "Murderer" then
-        NexusNotify("KILL ALL", "You must be the Murderer to use this!", 3)
-        return
-    end
-    
-    local myChar = LocalPlayer.Character
-    if not myChar then return end
-    
-    local knife = myChar:FindFirstChild("Knife") or LocalPlayer.Backpack:FindFirstChild("Knife")
-    if not knife then
-        NexusNotify("KILL ALL", "You need a knife!", 3)
-        return
-    end
-    
-    local killed = 0
-    for _, enemy in ipairs(Players:GetPlayers()) do
-        if enemy ~= LocalPlayer and enemy.Character then
-            local eRoot = enemy.Character:FindFirstChild("HumanoidRootPart")
-            local eHum = enemy.Character:FindFirstChild("Humanoid")
-            local eRole = RoleCache[enemy.Name]
-            
-            if eRoot and eHum and eHum.Health > 0 and eRole ~= "Murderer" and eRole ~= "Lobby" then
-                eRoot.CFrame = knife.Handle.CFrame
-                eRoot.Velocity = Vector3.new(0, 0, 0)
-                eRoot.RotVelocity = Vector3.new(0, 0, 0)
-                
-                local remote = GetKnifeRemote()
-                if remote then
-                    pcall(function()
-                        remote:FireServer(eRoot)
-                    end)
-                end
-                
-                killed = killed + 1
-                
-                if Config.KnifeLegitMode then
-                    break
-                end
-            end
-        end
-    end
-    
-    if killed > 0 then
-        NexusNotify("KILL ALL", "Attempted to kill " .. killed .. " players.", 3)
-    else
-        NexusNotify("KILL ALL", "No valid targets found.", 3)
-    end
-end
-
--- ==============================================================================
--- SISTEMA DE FLING
--- ==============================================================================
-local function CreateFlingGui()
-    if FlingGui then
-        FlingGui:Destroy()
-    end
-    
-    FlingGui = Instance.new("ScreenGui")
-    FlingGui.Name = "NexusFlingGui"
-    FlingGui.Parent = CoreGui
-    FlingGui.ResetOnSpawn = false
-    FlingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    FlingGui.IgnoreGuiInset = true
-    
-    local main = Instance.new("Frame")
-    main.Parent = FlingGui
-    main.Size = UDim2.new(0, 150, 0, 100)
-    main.Position = UDim2.new(0.5, -75, 0.3, 0)
-    main.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-    main.BorderSizePixel = 0
-    main.BackgroundTransparency = 1
-    
-    AddCorner(main, 14)
-    
-    local title = Instance.new("TextLabel")
-    title.Parent = main
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.BackgroundTransparency = 1
-    title.Text = "FLING"
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 22
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    
-    local button = Instance.new("TextButton")
-    button.Parent = main
-    button.Size = UDim2.new(0.8, 0, 0.5, 0)
-    button.Position = UDim2.new(0.1, 0, 0.4, 0)
-    button.Text = "OFF"
-    button.Font = Enum.Font.GothamBold
-    button.TextSize = 18
-    button.BackgroundColor3 = Color3.fromRGB(170, 40, 40)
-    button.TextColor3 = Color3.new(1, 1, 1)
-    button.BorderSizePixel = 0
-    
-    AddCorner(button, 12)
-    
-    -- Animação de abertura
-    TweenService:Create(main, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
-    
-    -- Botão de toggle
-    button.Activated:Connect(function()
-        hiddenfling = not hiddenfling
-        Config.FlingEnabled = hiddenfling
-        
-        TweenService:Create(button, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            BackgroundColor3 = hiddenfling and Color3.fromRGB(40, 180, 80) or Color3.fromRGB(170, 40, 40)
-        }):Play()
-        
-        button.Text = hiddenfling and "ON" or "OFF"
-        
-        if hiddenfling then
-            NexusNotify("FLING", "Fling enabled for Sheriff/Murderer", 3)
-        else
-            NexusNotify("FLING", "Fling disabled", 3)
-        end
-    end)
-    
-    -- Sistema de arrastar
-    MakeDraggable(main)
-    
-    -- Aplicar estado salvo
-    if Config.FlingEnabled then
-        hiddenfling = true
-        button.Text = "ON"
-        button.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
-    end
-    
-    return main
-end
-
--- Lógica do Fling
-task.spawn(function()
-    while true do
-        if hiddenfling then
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            
-            if hrp then
-                local vel = hrp.Velocity
-                hrp.Velocity = vel * 10000 + Vector3.new(0, 1000000, 0)
-                RunService.RenderStepped:Wait()
-                hrp.Velocity = vel
-                RunService.Stepped:Wait()
-                hrp.Velocity = vel + Vector3.new(0, movel, 0)
-                movel = -movel
-            end
-        end
-        RunService.Heartbeat:Wait()
-    end
-end)
-
--- ==============================================================================
--- SISTEMA ESP (VISUALIZAÇÃO)
--- ==============================================================================
-local TracerGui = Instance.new("ScreenGui")
-TracerGui.Name = "NexusTracersGui"
-TracerGui.Parent = CoreGui
-TracerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-TracerGui.IgnoreGuiInset = true
-
-local TracerCache = {}
-
-local function UpdateESP()
-    -- Limpar traçadores antigos
-    for _, line in pairs(TracerCache) do
-        line.Visible = false
-    end
-    
-    -- ESP para jogadores
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character then
-            local role = RoleCache[plr.Name] or "Lobby"
-            local color = RoleColors[role] or RoleColors.Lobby
-            
-            -- Determinar quais ESP mostrar
-            local showFill, showOutline, showTracer, showName, showDist = false, false, false, false, false
-            
-            if role == "Murderer" then
-                showFill = Config.Murder_Fill
-                showOutline = Config.Murder_Outline
-                showTracer = Config.Murder_Tracer
-                showName = Config.Murder_Name
-                showDist = Config.Murder_Dist
-            elseif role == "Sheriff" then
-                showFill = Config.Sheriff_Fill
-                showOutline = Config.Sheriff_Outline
-                showTracer = Config.Sheriff_Tracer
-                showName = Config.Sheriff_Name
-                showDist = Config.Sheriff_Dist
-            elseif role == "Hero" then
-                showFill = Config.Hero_Fill
-                showOutline = Config.Hero_Outline
-                showTracer = Config.Hero_Tracer
-                showName = Config.Hero_Name
-                showDist = Config.Hero_Dist
-            elseif role == "Innocent" then
-                showFill = Config.Innocent_Fill
-                showOutline = Config.Innocent_Outline
-                showTracer = Config.Innocent_Tracer
-                showName = Config.Innocent_Name
-                showDist = Config.Innocent_Dist
-            else
-                showFill = Config.Lobby_Fill
-                showOutline = Config.Lobby_Outline
-                showTracer = Config.Lobby_Tracer
-                showName = Config.Lobby_Name
-                showDist = Config.Lobby_Dist
-            end
-            
-            -- Criar ou atualizar ESP holder
-            local holder = plr.Character:FindFirstChild("NexusESP_Holder")
-            if not holder then
-                holder = Instance.new("Folder")
-                holder.Name = "NexusESP_Holder"
-                holder.Parent = plr.Character
-            end
-            
-            -- Highlight (Fill/Outline)
-            local hl = holder:FindFirstChild("Highlight")
-            if showFill or showOutline then
-                if not hl then
-                    hl = Instance.new("Highlight")
-                    hl.Name = "Highlight"
-                    hl.Adornee = plr.Character
-                    hl.Parent = holder
-                end
-                
-                hl.FillColor = color
-                hl.OutlineColor = color
-                hl.FillTransparency = showFill and Config.FillTransparency or 1
-                hl.OutlineTransparency = showOutline and Config.OutlineTransparency or 1
-            elseif hl then
-                hl:Destroy()
-            end
-            
-            -- Nome e distância
-            local head = plr.Character:FindFirstChild("Head")
-            if head and (showName or showDist) then
-                local bg = holder:FindFirstChild("NameGui")
-                if not bg then
-                    bg = Instance.new("BillboardGui")
-                    bg.Name = "NameGui"
-                    bg.Adornee = head
-                    bg.Size = UDim2.new(0, 200, 0, 50)
-                    bg.StudsOffset = Vector3.new(0, 3, 0)
-                    bg.AlwaysOnTop = true
-                    bg.Parent = holder
-                    
-                    local t = Instance.new("TextLabel")
-                    t.Name = "Txt"
-                    t.Size = UDim2.new(1, 0, 1, 0)
-                    t.BackgroundTransparency = 1
-                    t.Font = Enum.Font.GothamBold
-                    t.TextStrokeTransparency = 0.5
-                    t.TextSize = 13
-                    t.Parent = bg
-                end
-                
-                local finalText = ""
-                if showName then
-                    finalText = "[" .. string.upper(role) .. "]"
-                end
-                
-                if showDist and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - head.Position).Magnitude)
-                    finalText = finalText .. "\n[" .. tostring(dist) .. "m]"
-                end
-                
-                bg.Txt.Text = finalText
-                bg.Txt.TextColor3 = color
-            else
-                if holder:FindFirstChild("NameGui") then
-                    holder.NameGui:Destroy()
-                end
-            end
-            
-            -- Traçadores
-            local root = plr.Character:FindFirstChild("HumanoidRootPart")
-            if root and showTracer then
-                local vec, onScreen = Camera:WorldToViewportPoint(root.Position)
-                if onScreen then
-                    local line = TracerCache[plr.Name]
-                    if not line then
-                        line = Instance.new("Frame")
-                        line.Name = plr.Name
-                        line.AnchorPoint = Vector2.new(0.5, 0.5)
-                        line.BorderSizePixel = 0
-                        line.Parent = TracerGui
-                        TracerCache[plr.Name] = line
-                    end
-                    
-                    line.Visible = true
-                    line.BackgroundColor3 = color
-                    
-                    local origin = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    local target = Vector2.new(vec.X, vec.Y)
-                    local length = (origin - target).Magnitude
-                    local center = (origin + target) / 2
-                    local angle = math.atan2(target.Y - origin.Y, target.X - origin.X)
-                    
-                    line.Size = UDim2.new(0, length, 0, 1.5)
-                    line.Position = UDim2.new(0, center.X, 0, center.Y)
-                    line.Rotation = math.deg(angle)
-                end
-            end
-        end
-    end
-    
-    -- ESP para arma no chão
-    if foundGunDrop then
-        local holder = foundGunDrop:FindFirstChild("NexusESP_Holder")
-        if not holder then
-            holder = Instance.new("Folder")
-            holder.Name = "NexusESP_Holder"
-            holder.Parent = foundGunDrop
-        end
-        
-        -- Highlight para arma
-        local hl = holder:FindFirstChild("Highlight")
-        if Config.Gun_Fill or Config.Gun_Outline then
-            if not hl then
-                hl = Instance.new("Highlight")
-                hl.Name = "Highlight"
-                hl.Adornee = foundGunDrop
-                hl.Parent = holder
-            end
-            
-            hl.FillColor = RoleColors.Gun
-            hl.OutlineColor = RoleColors.Gun
-            hl.FillTransparency = Config.Gun_Fill and 0.5 or 1
-            hl.OutlineTransparency = Config.Gun_Outline and 0 or 1
-        elseif hl then
-            hl:Destroy()
-        end
-        
-        -- Nome e distância da arma
-        if Config.Gun_Name or Config.Gun_Dist then
-            local bg = holder:FindFirstChild("NameGui")
-            if not bg then
-                bg = Instance.new("BillboardGui")
-                bg.Name = "NameGui"
-                bg.Adornee = foundGunDrop
-                bg.Size = UDim2.new(0, 200, 0, 50)
-                bg.StudsOffset = Vector3.new(0, 2, 0)
-                bg.AlwaysOnTop = true
-                bg.Parent = holder
-                
-                local t = Instance.new("TextLabel")
-                t.Name = "Txt"
-                t.Size = UDim2.new(1, 0, 1, 0)
-                t.BackgroundTransparency = 1
-                t.Font = Enum.Font.GothamBold
-                t.TextStrokeTransparency = 0.5
-                t.TextSize = 13
-                t.Parent = bg
-            end
-            
-            local txt = "GUN DROP"
-            if Config.Gun_Dist and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - foundGunDrop.Position).Magnitude)
-                txt = txt .. " [" .. dist .. "m]"
-            end
-            
-            bg.Txt.Text = txt
-            bg.Txt.TextColor3 = RoleColors.Gun
-        else
-            if holder:FindFirstChild("NameGui") then
-                holder.NameGui:Destroy()
-            end
-        end
-    end
-end
-
--- Atualizar ESP em tempo real
-RunService.RenderStepped:Connect(UpdateESP)
-
--- ==============================================================================
--- INTERFACE PRINCIPAL
--- ==============================================================================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "NexusHubMain"
-ScreenGui.Parent = CoreGui
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
--- Botão de toggle
-ToggleButton = Instance.new("TextButton")
-ToggleButton.Parent = ScreenGui
-ToggleButton.Size = UDim2.new(0, 40, 0, 40)
-ToggleButton.Position = UDim2.new(0.1, 0, 0.1, 0)
-ToggleButton.BackgroundColor3 = Theme.Background
-ToggleButton.Text = "N"
-ToggleButton.TextColor3 = Theme.Accent
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.TextSize = 24
-ToggleButton.AutoButtonColor = false
-ToggleButton.ZIndex = 100
-
-AddCorner(ToggleButton, 10)
-AddStroke(ToggleButton, Theme.Accent, 2)
-MakeDraggable(ToggleButton)
-
--- Frame principal
-MainFrame = Instance.new("Frame")
-MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MainFrame.Size = UDim2.new(0, 400, 0, 320)
-MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.BackgroundColor3 = Theme.Background
-MainFrame.Parent = ScreenGui
-MainFrame.ClipsDescendants = true
-MainFrame.Visible = true
-
-AddCorner(MainFrame, 10)
-AddStroke(MainFrame, Theme.Accent, 2)
-
--- Sidebar
-local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 100, 1, 0)
-Sidebar.BackgroundColor3 = Theme.Sidebar
-Sidebar.Parent = MainFrame
-AddCorner(Sidebar, 10)
-MakeDraggable(MainFrame, Sidebar)
-
--- Toggle do menu
-ToggleButton.MouseButton1Click:Connect(function()
-    PlayClickSound()
-    MainFrame.Visible = not MainFrame.Visible
-    
-    if MainFrame.Visible then
-        MainFrame.Size = UDim2.new(0, 0, 0, 0)
-        MainFrame.BackgroundTransparency = 1
-        
-        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 400, 0, 320),
-            BackgroundTransparency = 0
-        }):Play()
-    end
-end)
-
--- Container de conteúdo
-local ContentContainer = Instance.new("Frame")
-ContentContainer.Size = UDim2.new(1, -110, 1, -20)
-ContentContainer.Position = UDim2.new(0, 110, 0, 10)
-ContentContainer.BackgroundTransparency = 1
-ContentContainer.Parent = MainFrame
-
--- Título
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Parent = Sidebar
-TitleLabel.Size = UDim2.new(1, 0, 0, 30)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "NEXUS MM2"
-TitleLabel.TextColor3 = Theme.Accent
-TitleLabel.Font = Enum.Font.GothamBlack
-TitleLabel.TextSize = 14
-TitleLabel.LayoutOrder = 0
-
--- Sistema de abas
-local function CreateTab(name)
-    local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(1, -10, 0, 30)
-    TabBtn.Position = UDim2.new(0, 5, 0, 50 + (#tabs * 35))
-    TabBtn.BackgroundColor3 = Theme.Background
-    TabBtn.Text = name
-    TabBtn.Font = Enum.Font.GothamSemibold
-    TabBtn.TextColor3 = Theme.TextDim
-    TabBtn.TextSize = 12
-    TabBtn.AutoButtonColor = false
-    TabBtn.Parent = Sidebar
-    
-    AddCorner(TabBtn, 6)
-    
-    local TabFrame = Instance.new("ScrollingFrame")
-    TabFrame.Size = UDim2.new(1, 0, 1, 0)
-    TabFrame.BackgroundTransparency = 1
-    TabFrame.ScrollBarThickness = 2
-    TabFrame.ScrollBarImageColor3 = Theme.Accent
-    TabFrame.Visible = false
-    TabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    TabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    TabFrame.Parent = ContentContainer
-    
-    local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 6)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Parent = TabFrame
-    
-    local padding = Instance.new("UIPadding")
-    padding.PaddingTop = UDim.new(0, 5)
-    padding.PaddingLeft = UDim.new(0, 5)
-    padding.PaddingBottom = UDim.new(0, 5)
-    padding.Parent = TabFrame
-    
-    table.insert(tabs, {Btn = TabBtn, Frame = TabFrame})
-    
-    TabBtn.MouseButton1Click:Connect(function()
-        PlayClickSound()
-        
-        for _, t in ipairs(tabs) do
-            t.Frame.Visible = false
-            TweenService:Create(t.Btn, TweenInfo.new(0.3), {
-                TextColor3 = Theme.TextDim,
-                BackgroundColor3 = Theme.Background
-            }):Play()
-        end
-        
-        TabFrame.Visible = true
-        TweenService:Create(TabBtn, TweenInfo.new(0.3), {
-            TextColor3 = Theme.Text,
-            BackgroundColor3 = Theme.AccentDark
-        }):Play()
-    end)
-    
-    return TabFrame
-end
-
--- Funções para criar elementos da UI
-local function CreateToggle(parent, text, default, callback)
-    local ToggleFrame = Instance.new("Frame")
-    ToggleFrame.Size = UDim2.new(1, -10, 0, 32)
-    ToggleFrame.BackgroundColor3 = Theme.ItemBG
-    ToggleFrame.Parent = parent
-    
-    AddCorner(ToggleFrame, 6)
-    
-    local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(1, 0, 1, 0)
-    ToggleBtn.BackgroundTransparency = 1
-    ToggleBtn.Text = ""
-    ToggleBtn.Parent = ToggleFrame
-    
-    local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(0.8, 0, 1, 0)
-    Label.Position = UDim2.new(0, 8, 0, 0)
-    Label.BackgroundTransparency = 1
-    Label.Text = text
-    Label.TextColor3 = Theme.Text
-    Label.Font = Enum.Font.GothamSemibold
-    Label.TextSize = 12
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.Parent = ToggleFrame
-    
-    local Indicator = Instance.new("Frame")
-    Indicator.Size = UDim2.new(0, 16, 0, 16)
-    Indicator.Position = UDim2.new(1, -24, 0.5, -8)
-    Indicator.BackgroundColor3 = default and Theme.Accent or Color3.fromRGB(60, 60, 60)
-    Indicator.Parent = ToggleFrame
-    
-    AddCorner(Indicator, 4)
-    
-    local toggled = default
-    
-    if toggled then
-        Indicator.BackgroundColor3 = Theme.Accent
-    end
-    
-    ToggleBtn.MouseButton1Click:Connect(function()
-        PlayClickSound()
-        toggled = not toggled
-        
-        TweenService:Create(Indicator, TweenInfo.new(0.3), {
-            BackgroundColor3 = toggled and Theme.Accent or Color3.fromRGB(60, 60, 60)
-        }):Play()
-        
-        callback(toggled)
-    end)
-    
-    return function(state)
-        toggled = state
-        Indicator.BackgroundColor3 = toggled and Theme.Accent or Color3.fromRGB(60, 60, 60)
-    end
-end
-
-local function CreateButton(parent, text, callback)
-    local ButtonFrame = Instance.new("Frame")
-    ButtonFrame.Size = UDim2.new(1, -10, 0, 32)
-    ButtonFrame.BackgroundColor3 = Theme.ItemBG
-    ButtonFrame.Parent = parent
-    
-    AddCorner(ButtonFrame, 6)
-    
-    local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, 0, 1, 0)
-    Btn.BackgroundTransparency = 1
-    Btn.Text = text
-    Btn.TextColor3 = Theme.Accent
-    Btn.Font = Enum.Font.GothamBold
-    Btn.TextSize = 12
-    Btn.Parent = ButtonFrame
-    
-    Btn.MouseButton1Click:Connect(function()
-        PlayClickSound()
-        
-        TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {
-            BackgroundColor3 = Theme.AccentDark
-        }):Play()
-        
-        task.wait(0.1)
-        
-        TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {
-            BackgroundColor3 = Theme.ItemBG
-        }):Play()
-        
-        callback(Btn, ButtonFrame)
-    end)
-end
-
-local function CreateSection(parent, text)
-    local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, -10, 0, 20)
-    Label.BackgroundTransparency = 1
-    Label.Text = text
-    Label.TextColor3 = Theme.Accent
-    Label.Font = Enum.Font.GothamBold
-    Label.TextSize = 11
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.Parent = parent
-end
-
-local function CreateInput(parent, text, placeholder, defaultVal, callback)
-    local InputFrame = Instance.new("Frame")
-    InputFrame.Size = UDim2.new(1, -10, 0, 32)
-    InputFrame.BackgroundColor3 = Theme.ItemBG
-    InputFrame.Parent = parent
-    
-    AddCorner(InputFrame, 6)
-    
-    local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(0.5, 0, 1, 0)
-    Label.Position = UDim2.new(0, 8, 0, 0)
-    Label.BackgroundTransparency = 1
-    Label.Text = text
-    Label.TextColor3 = Theme.Text
-    Label.Font = Enum.Font.GothamSemibold
-    Label.TextSize = 12
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.Parent = InputFrame
-    
-    local Box = Instance.new("TextBox")
-    Box.Size = UDim2.new(0.4, 0, 0.7, 0)
-    Box.Position = UDim2.new(0.55, 0, 0.15, 0)
-    Box.BackgroundColor3 = Theme.InputBG
-    Box.Text = defaultVal or ""
-    Box.PlaceholderText = placeholder
-    Box.TextColor3 = Theme.Accent
-    Box.Font = Enum.Font.GothamBold
-    Box.TextSize = 11
-    Box.Parent = InputFrame
-    
-    AddCorner(Box, 4)
-    
-    local BoxStroke = AddStroke(Box, Color3.fromRGB(50, 50, 60), 1)
-    
-    Box.Focused:Connect(function()
-        TweenService:Create(BoxStroke, TweenInfo.new(0.2), {Color = Theme.Accent}):Play()
-    end)
-    
-    Box.FocusLost:Connect(function()
-        TweenService:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(50, 50, 60)}):Play()
-        
-        if callback then
-            callback(Box.Text)
-        end
-    end)
-end
-
--- ==============================================================================
--- CRIAR ABAS E CONTEÚDO
--- ==============================================================================
--- Aba COMBAT
-local TabCombat = CreateTab("COMBAT")
-
--- Legit Mode
-CreateSection(TabCombat, "LEGIT MODE")
-CreateToggle(TabCombat, "Legit Mode (1 Target Only)", Config.KnifeLegitMode, function(v)
-    Config.KnifeLegitMode = v
-end)
-
--- Murderer Knife
-CreateSection(TabCombat, "MURDERER (KNIFE)")
-CreateToggle(TabCombat, "Knife Throwing TP", Config.KnifeHoming, function(v)
-    Config.KnifeHoming = v
-end)
-
-CreateInput(TabCombat, "Throw Trigger Dist", "Ex: 25", tostring(Config.KnifeTriggerDist), function(txt)
-    Config.KnifeTriggerDist = tonumber(txt) or 25
-end)
-
--- Botão Kill All
-CreateButton(TabCombat, "KILL ALL (MURDERER)", function(btn, frame)
-    PlayClickSound()
-    KillAll()
-end)
-
--- Knife Aura
-CreateSection(TabCombat, "KNIFE AURA")
-CreateToggle(TabCombat, "Enable Knife Aura", Config.KnifeAura, function(v)
-    Config.KnifeAura = v
-end)
-
-CreateInput(TabCombat, "Aura Distance", "Ex: 15", tostring(Config.KnifeAuraDist), function(txt)
-    Config.KnifeAuraDist = tonumber(txt) or 15
-end)
-
--- Hitbox Expander
-CreateSection(TabCombat, "HITBOX EXPANDER")
-CreateToggle(TabCombat, "Enable Expand", Config.HitboxExpand, function(v)
-    Config.HitboxExpand = v
-end)
-
-CreateInput(TabCombat, "Size (Default: 4)", "Ex: 4", tostring(Config.HitboxSize), function(txt)
-    Config.HitboxSize = tonumber(txt) or 4
-end)
-
-CreateToggle(TabCombat, "Visible Hitbox", Config.HitboxVisible, function(v)
-    Config.HitboxVisible = v
-end)
-
--- Sheriff Gun
-CreateSection(TabCombat, "SHERIFF (GUN)")
-CreateToggle(TabCombat, "Silent Aim (Button)", Config.SilentAim, function(v)
-    Config.SilentAim = v
-    ShootGui.Enabled = v
-end)
-
-CreateToggle(TabCombat, "Aim WallCheck", Config.WallCheck, function(v)
-    Config.WallCheck = v
-end)
-
-CreateToggle(TabCombat, "Lead Shot (Ping Predict)", Config.LeadShot, function(v)
-    Config.LeadShot = v
-end)
-
--- Aba VISUALS
-local TabVisuals = CreateTab("VISUALS")
-
--- Notifications
-CreateSection(TabVisuals, "NOTIFICATIONS")
-CreateToggle(TabVisuals, "Notify Roles (Murd/Sher)", Config.NotifyRoles, function(v)
-    Config.NotifyRoles = v
-end)
-
-CreateToggle(TabVisuals, "Notify Gun Pickup", Config.NotifyGunPickup, function(v)
-    Config.NotifyGunPickup = v
-end)
-
-CreateToggle(TabVisuals, "Notify Gun Drop", Config.NotifyGunDrop, function(v)
-    Config.NotifyGunDrop = v
-end)
-
--- ESP Murderer
-CreateSection(TabVisuals, "MURDERER (RED)")
-CreateToggle(TabVisuals, "Show Highlight", Config.Murder_Fill, function(v) Config.Murder_Fill = v end)
-CreateToggle(TabVisuals, "Show Outline", Config.Murder_Outline, function(v) Config.Murder_Outline = v end)
-CreateToggle(TabVisuals, "Show Tracer", Config.Murder_Tracer, function(v) Config.Murder_Tracer = v end)
-CreateToggle(TabVisuals, "Show Role Text", Config.Murder_Name, function(v) Config.Murder_Name = v end)
-CreateToggle(TabVisuals, "Show Distance", Config.Murder_Dist, function(v) Config.Murder_Dist = v end)
-
--- ESP Sheriff
-CreateSection(TabVisuals, "SHERIFF (BLUE)")
-CreateToggle(TabVisuals, "Show Highlight", Config.Sheriff_Fill, function(v) Config.Sheriff_Fill = v end)
-CreateToggle(TabVisuals, "Show Outline", Config.Sheriff_Outline, function(v) Config.Sheriff_Outline = v end)
-CreateToggle(TabVisuals, "Show Tracer", Config.Sheriff_Tracer, function(v) Config.Sheriff_Tracer = v end)
-CreateToggle(TabVisuals, "Show Role Text", Config.Sheriff_Name, function(v) Config.Sheriff_Name = v end)
-CreateToggle(TabVisuals, "Show Distance", Config.Sheriff_Dist, function(v) Config.Sheriff_Dist = v end)
-
--- ESP Hero
-CreateSection(TabVisuals, "HERO (YELLOW)")
-CreateToggle(TabVisuals, "Show Highlight", Config.Hero_Fill, function(v) Config.Hero_Fill = v end)
-CreateToggle(TabVisuals, "Show Outline", Config.Hero_Outline, function(v) Config.Hero_Outline = v end)
-CreateToggle(TabVisuals, "Show Tracer", Config.Hero_Tracer, function(v) Config.Hero_Tracer = v end)
-CreateToggle(TabVisuals, "Show Role Text", Config.Hero_Name, function(v) Config.Hero_Name = v end)
-CreateToggle(TabVisuals, "Show Distance", Config.Hero_Dist, function(v) Config.Hero_Dist = v end)
-
--- ESP Innocent
-CreateSection(TabVisuals, "INNOCENT (GREEN)")
-CreateToggle(TabVisuals, "Show Highlight", Config.Innocent_Fill, function(v) Config.Innocent_Fill = v end)
-CreateToggle(TabVisuals, "Show Outline", Config.Innocent_Outline, function(v) Config.Innocent_Outline = v end)
-CreateToggle(TabVisuals, "Show Tracer", Config.Innocent_Tracer, function(v) Config.Innocent_Tracer = v end)
-CreateToggle(TabVisuals, "Show Role Text", Config.Innocent_Name, function(v) Config.Innocent_Name = v end)
-CreateToggle(TabVisuals, "Show Distance", Config.Innocent_Dist, function(v) Config.Innocent_Dist = v end)
-
--- ESP Lobby
-CreateSection(TabVisuals, "LOBBY / DEAD (GREY)")
-CreateToggle(TabVisuals, "Show Highlight", Config.Lobby_Fill, function(v) Config.Lobby_Fill = v end)
-CreateToggle(TabVisuals, "Show Outline", Config.Lobby_Outline, function(v) Config.Lobby_Outline = v end)
-CreateToggle(TabVisuals, "Show Tracer", Config.Lobby_Tracer, function(v) Config.Lobby_Tracer = v end)
-CreateToggle(TabVisuals, "Show Role Text", Config.Lobby_Name, function(v) Config.Lobby_Name = v end)
-CreateToggle(TabVisuals, "Show Distance", Config.Lobby_Dist, function(v) Config.Lobby_Dist = v end)
-
--- ESP Gun Drop
-CreateSection(TabVisuals, "GUN DROP")
-CreateToggle(TabVisuals, "Show Highlight", Config.Gun_Fill, function(v) Config.Gun_Fill = v end)
-CreateToggle(TabVisuals, "Show Outline", Config.Gun_Outline, function(v) Config.Gun_Outline = v end)
-CreateToggle(TabVisuals, "Show Name", Config.Gun_Name, function(v) Config.Gun_Name = v end)
-CreateToggle(TabVisuals, "Show Distance", Config.Gun_Dist, function(v) Config.Gun_Dist = v end)
-
--- Aba LEGIT / PLAYER
-local TabLegit = CreateTab("LEGIT / PLAYER")
-
--- Fling
-CreateSection(TabLegit, "FLING")
-CreateToggle(TabLegit, "Fling (Sheriff/Murderer)", Config.FlingEnabled, function(v)
-    Config.FlingEnabled = v
-    hiddenfling = v
-    
-    if v then
-        if not FlingGui then
-            CreateFlingGui()
-        else
-            FlingGui.Enabled = true
-        end
-        NexusNotify("FLING", "Fling enabled for Sheriff/Murderer", 3)
-    else
-        if FlingGui then
-            FlingGui.Enabled = false
-        end
-        NexusNotify("FLING", "Fling disabled", 3)
-    end
-end)
-
--- Protection
-CreateSection(TabLegit, "PROTECTION")
-CreateToggle(TabLegit, "Anti-Fling", Config.AntiFling, function(v)
-    Config.AntiFling = v
-end)
-
--- Auto Grab
-CreateSection(TabLegit, "AUTO GRAB")
-CreateToggle(TabLegit, "Grab Gun", Config.AutoGrabGun, function(v)
-    Config.AutoGrabGun = v
-end)
-
-CreateToggle(TabLegit, "Show Grab Floating Btn", Config.ShowGrabBtn, function(v)
-    Config.ShowGrabBtn = v
-end)
-
-CreateButton(TabLegit, "FORCE GRAB GUN (Click)", function()
-    AttemptGrab()
-end)
-
-CreateInput(TabLegit, "Grab Dist", "Ex: 15", tostring(Config.GrabDistance), function(txt)
-    Config.GrabDistance = tonumber(txt) or 15
-end)
-
--- Ghost / Invisible
-CreateSection(TabLegit, "GHOST / INVISIBLE")
-CreateToggle(TabLegit, "Show Ghost Button", Config.ShowInvisBtn, function(v)
-    Config.ShowInvisBtn = v
-end)
-
--- Movement Mods
-CreateSection(TabLegit, "MOVEMENT MODS")
-CreateToggle(TabLegit, "Enable WalkSpeed", Config.WalkSpeedEnabled, function(v)
-    Config.WalkSpeedEnabled = v
-end)
-
-CreateInput(TabLegit, "Speed (Def: 16)", "Ex: 24", tostring(Config.WalkSpeedValue), function(txt)
-    Config.WalkSpeedValue = tonumber(txt) or 16
-end)
-
-CreateToggle(TabLegit, "Enable JumpPower", Config.JumpPowerEnabled, function(v)
-    Config.JumpPowerEnabled = v
-end)
-
-CreateInput(TabLegit, "Power (Def: 50)", "Ex: 80", tostring(Config.JumpPowerValue), function(txt)
-    Config.JumpPowerValue = tonumber(txt) or 50
-end)
-
--- Aba SETTINGS
-local TabSettings = CreateTab("SETTINGS")
-
--- Visual Settings
-CreateSection(TabSettings, "VISUAL SETTINGS")
-CreateToggle(TabSettings, "Instant Role Reveal", Config.InstantRole, function(v)
-    Config.InstantRole = v
-end)
-
--- Anti Lag
-CreateToggle(TabSettings, "Anti Lag (Remove Shadows)", Config.AntiLag, function(v)
-    Config.AntiLag = v
-    
-    if v then
-        Lighting.GlobalShadows = false
-        Lighting.ShadowSoftness = 0
-        Lighting.ShadowColor = Color3.new(0, 0, 0)
-    else
-        Lighting.GlobalShadows = true
-        Lighting.ShadowSoftness = 1
-    end
-end)
-
--- Configuration
-CreateSection(TabSettings, "CONFIGURATION")
-CreateButton(TabSettings, "SAVE CONFIGURATION", function(btn, frame)
-    SaveConfig(btn, frame)
-end)
-
-CreateButton(TabSettings, "RESET SETTINGS", function(btn, frame)
-    Config = DeepCopy(DefaultConfig)
-    Config.GuiPositions = {}
-    
-    if hasFileFunctions then
-        pcall(function()
-            writefile(ConfigFileName, HttpService:JSONEncode(Config))
-        end)
-    end
-    
-    btn.Text = "RESET DONE!"
-    btn.TextColor3 = Color3.fromRGB(0, 255, 100)
-    
-    task.delay(1, function()
-        btn.Text = "RESET SETTINGS"
-        btn.TextColor3 = Theme.Accent
-        NexusNotify("RESET", "Settings reset. Please re-execute script to update visual toggles fully.", 5)
-    end)
-end)
-
--- Ativar primeira aba
 if tabs[1] then
     tabs[1].Frame.Visible = true
     tabs[1].Btn.TextColor3 = Theme.Text
     tabs[1].Btn.BackgroundColor3 = Theme.AccentDark
 end
 
--- Animação de entrada
 MainFrame.Size = UDim2.new(0, 0, 0, 0)
-TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart), {
-    Size = UDim2.new(0, 400, 0, 320)
-}):Play()
+TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart), {Size = UDim2.new(0, 400, 0, 320)}):Play()
 
--- ==============================================================================
--- CARREGAR POSIÇÕES SALVAS
--- ==============================================================================
+if Config.AntiLag then
+    Lighting.GlobalShadows = false
+    Lighting.ShadowSoftness = 0
+    Lighting.ShadowColor = Color3.new(0,0,0)
+end
+
+-- Aplicar tema inicial
+ApplyThemeToGUI()
+
+-- Carregar posições
 local function LoadGuiPositions()
     if Config.GuiPositions then
         local function SetPos(uiObj, name)
@@ -2064,7 +2308,6 @@ local function LoadGuiPositions()
                 uiObj.Position = UDim2.new(p[1], p[2], p[3], p[4])
             end
         end
-        
         SetPos(MainFrame, "MainFrame")
         SetPos(ToggleButton, "ToggleButton")
         SetPos(ShootButton, "ShootButton")
@@ -2073,33 +2316,14 @@ local function LoadGuiPositions()
     end
 end
 
--- ==============================================================================
--- INICIALIZAÇÃO FINAL
--- ==============================================================================
-
--- Aplicar Anti Lag se estiver ativado
-if Config.AntiLag then
-    Lighting.GlobalShadows = false
-    Lighting.ShadowSoftness = 0
-    Lighting.ShadowColor = Color3.new(0, 0, 0)
-end
-
--- Criar GUI do Fling se estiver ativado
-if Config.FlingEnabled then
-    hiddenfling = true
-    CreateFlingGui()
-end
-
--- Carregar posições
 LoadGuiPositions()
 
--- Notificação de inicialização
-NexusNotify("NEXUS HUB MM2", "Script loaded successfully!\nMade by Nexus Team", 5)
+-- Forçar aplicação do tema após um pequeno delay
+task.wait(0.5)
+ApplyThemeToGUI()
 
--- ==============================================================================
--- CÓDIGO DE TESTE (REMOVER EM PRODUÇÃO)
--- ==============================================================================
-print("Nexus Hub MM2 loaded successfully!")
-print("Player:", LocalPlayer.Name)
-print("Game:", game.PlaceId)
-print("Config loaded:", #Config.GuiPositions > 0 and "Yes" or "No")
+NexusNotify("NEXUS HUB MM2",
+    "Script loaded successfully!\n" ..
+    "- Fling with SPINNING effect enabled\n" ..
+    "- Custom Themes FIXED (title & buttons)\n" ..
+    "- Save system working with themes", 5)
