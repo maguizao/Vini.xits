@@ -588,13 +588,15 @@ task.spawn(function()
 end)
 
 -- ==============================================================================
--- SHOOT GUI
+-- SHOOT GUI E LEADSHOT
 -- ==============================================================================
 local function GetLeadShotPosition(targetRootPart)
     local currentPos = targetRootPart.Position
-    local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
-    local predictedPos = currentPos + (targetRootPart.Velocity * ping * 1.5)
-    return predictedPos
+    if Config.LeadShot then 
+        local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
+        currentPos = currentPos + (targetRootPart.Velocity * ping * 1.5) 
+    end
+    return currentPos
 end
 
 ShootGui = Instance.new("ScreenGui")
@@ -718,11 +720,7 @@ ShootButton.MouseButton1Click:Connect(function()
     end
     
     local targetRoot = targetPlr.Character.HumanoidRootPart
-    local targetPos = targetRoot.Position
-    
-    if Config.LeadShot then
-        targetPos = GetLeadShotPosition(targetRoot)
-    end
+    local targetPos = GetLeadShotPosition(targetRoot)
     
     local args = {CFrame.new(Camera.CFrame.Position, targetPos), CFrame.new(targetPos)}
     
@@ -2498,4 +2496,5 @@ NexusNotify("NEXUS HUB MM2",
     "- Save system working with themes\n" ..
     "- Positions loading FIXED for all elements\n" ..
     "- Grab Gun button FIXED and working!\n" ..
-    "- Nova aba CRÉDITOS adicionada!", 5)
+    "- Nova aba CRÉDITOS adicionada!\n" ..
+    "- LeadShot FIXED and working!", 5)
