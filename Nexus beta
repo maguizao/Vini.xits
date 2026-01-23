@@ -411,6 +411,29 @@ GrabBtn.AutoButtonColor = true
 GrabBtn.Name = "GrabButtonText"
 MakeDraggable(GrabFrame, GrabBtn)
 
+-- CORREÇÃO: Adicionar função de clique para o botão Grab Gun
+GrabBtn.MouseButton1Click:Connect(function()
+    PlayClickSound()
+    if foundGunDrop and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local Root = LocalPlayer.Character.HumanoidRootPart
+        foundGunDrop.CanCollide = false
+        foundGunDrop.CFrame = Root.CFrame
+        foundGunDrop.Velocity = Vector3.new(0,0,0)
+        NexusNotify("GRAB", "Gun Teleported!", 1)
+        GrabBtn.Text = "SUCCESS"
+        GrabBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
+        GrabStroke.Color = Color3.fromRGB(0, 255, 100)
+        
+        task.delay(0.5, function()
+            GrabBtn.Text = "GRAB GUN"
+            GrabBtn.TextColor3 = Theme.Accent
+            GrabStroke.Color = Theme.Accent
+        end)
+    else
+        NexusNotify("INFO", "No gun on map yet.", 1)
+    end
+end)
+
 local InvisGui = Instance.new("ScreenGui")
 InvisGui.Name = "NexusInvisBtn"
 InvisGui.Parent = CoreGui
@@ -1949,17 +1972,6 @@ local function SetTheme(themeName)
     if Themes[themeName] then
         Theme = Themes[themeName]
         Config.CustomTheme = themeName
-        
-        -- Salvar imediatamente ao mudar o tema
-        if writefile then
-            local success, encoded = pcall(function()
-                return HttpService:JSONEncode(Config)
-            end)
-            if success then
-                writefile(ConfigFileName, encoded)
-            end
-        end
-        
         ApplyThemeToGUI()
         NexusNotify("THEME", "Theme changed to " .. themeName, 3)
         return true
@@ -2279,6 +2291,41 @@ task.spawn(function()
 end)
 
 -- ==============================================================================
+-- FUNÇÃO PARA CARREGAR POSIÇÕES (CORRIGIDA)
+-- ==============================================================================
+local function LoadGuiPositions()
+    if Config.GuiPositions then
+        -- Função auxiliar para definir posição
+        local function SetPos(uiObj, name)
+            if uiObj and Config.GuiPositions[name] then
+                local p = Config.GuiPositions[name]
+                if #p >= 4 then
+                    uiObj.Position = UDim2.new(p[1], p[2], p[3], p[4])
+                    print("Posição carregada para " .. name .. ": " .. tostring(p[1]) .. ", " .. tostring(p[2]) .. ", " .. tostring(p[3]) .. ", " .. tostring(p[4]))
+                end
+            end
+        end
+        
+        -- Carregar posição do MainFrame
+        SetPos(MainFrame, "MainFrame")
+        
+        -- Carregar posição do ToggleButton
+        SetPos(ToggleButton, "ToggleButton")
+        
+        -- Carregar posição do ShootButton (importante!)
+        SetPos(ShootButton, "ShootButton")
+        
+        -- Carregar posição do GrabFrame
+        SetPos(GrabFrame, "GrabFrame")
+        
+        -- Carregar posição do InvisFrame
+        SetPos(InvisFrame, "InvisFrame")
+    else
+        print("Nenhuma posição salva encontrada na config")
+    end
+end
+
+-- ==============================================================================
 -- INICIALIZAÇÃO FINAL (CORRIGIDA)
 -- ==============================================================================
 if tabs[1] then
@@ -2299,31 +2346,28 @@ end
 -- Aplicar tema inicial
 ApplyThemeToGUI()
 
--- Carregar posições
-local function LoadGuiPositions()
-    if Config.GuiPositions then
-        local function SetPos(uiObj, name)
-            if uiObj and Config.GuiPositions[name] then
-                local p = Config.GuiPositions[name]
-                uiObj.Position = UDim2.new(p[1], p[2], p[3], p[4])
-            end
-        end
-        SetPos(MainFrame, "MainFrame")
-        SetPos(ToggleButton, "ToggleButton")
-        SetPos(ShootButton, "ShootButton")
-        SetPos(GrabFrame, "GrabFrame")
-        SetPos(InvisFrame, "InvisFrame")
-    end
-end
-
+-- Carregar posições ANTES de qualquer coisa
+task.wait(0.1) -- Pequeno delay para garantir que tudo foi criado
 LoadGuiPositions()
 
--- Forçar aplicação do tema após um pequeno delay
-task.wait(0.5)
-ApplyThemeToGUI()
+-- Verificar e aplicar posições novamente após um delay
+task.spawn(function()
+    task.wait(0.5)
+    
+    -- Verificar se as posições foram aplicadas corretamente
+    if ShootButton and ShootButton.Position == UDim2.new(0.65, 0, 0.6, 0) then
+        -- Posição padrão ainda está sendo usada, tentar carregar novamente
+        LoadGuiPositions()
+    end
+    
+    -- Garantir que o tema seja aplicado após carregar as posições
+    ApplyThemeToGUI()
+end)
 
 NexusNotify("NEXUS HUB MM2",
     "Script loaded successfully!\n" ..
     "- Fling with SPINNING effect enabled\n" ..
     "- Custom Themes FIXED (title & buttons)\n" ..
-    "- Save system working with themes", 5)
+    "- Save system working with themes\n" ..
+    "- Positions loading FIXED for all elements\n" ..
+    "- Grab Gun button FIXED and working!", 5)
