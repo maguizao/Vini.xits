@@ -1845,6 +1845,127 @@ CreateInput(TabLegit, "Power (Def: 50)", "Ex: 80", tostring(Config.JumpPowerValu
 end)
 
 -- ==============================================================================
+-- TAB CRÉDITOS (NOVA ABA)
+-- ==============================================================================
+local TabCredits = CreateTab("CRÉDITOS")
+
+-- Função para copiar para o clipboard
+local function CopyToClipboard(text)
+    if setclipboard then
+        setclipboard(text)
+    else
+        local textbox = Instance.new("TextBox")
+        textbox.Text = text
+        textbox.Parent = CoreGui
+        textbox:SelectAll()
+        textbox:Copy()
+        textbox:Destroy()
+    end
+    NexusNotify("CLIPBOARD", "Link copiado!", 2)
+end
+
+CreateSection(TabCredits, "CRIADORES DO SCRIPT")
+
+-- Frame para Vini.xits.script
+local ViniFrame = Instance.new("Frame")
+ViniFrame.Size = UDim2.new(1, -10, 0, 100)
+ViniFrame.BackgroundColor3 = Theme.ItemBG
+ViniFrame.Parent = TabCredits
+AddCorner(ViniFrame, 8)
+
+local ViniLayout = Instance.new("Frame")
+ViniLayout.Size = UDim2.new(1, 0, 1, 0)
+ViniLayout.BackgroundTransparency = 1
+ViniLayout.Parent = ViniFrame
+
+local ViniImage = Instance.new("ImageLabel")
+ViniImage.Size = UDim2.new(0, 60, 0, 60)
+ViniImage.Position = UDim2.new(0, 10, 0.5, -30)
+ViniImage.BackgroundTransparency = 1
+ViniImage.Image = "rbxassetid://105539608071275"
+ViniImage.Parent = ViniLayout
+
+local ViniName = Instance.new("TextLabel")
+ViniName.Size = UDim2.new(0.6, 0, 0, 30)
+ViniName.Position = UDim2.new(0, 80, 0.5, -25)
+ViniName.BackgroundTransparency = 1
+ViniName.Text = "Vini.xits.script"
+ViniName.TextColor3 = Theme.Accent
+ViniName.Font = Enum.Font.GothamBlack
+ViniName.TextSize = 14
+ViniName.TextXAlignment = Enum.TextXAlignment.Left
+ViniName.Parent = ViniLayout
+
+local ViniBtn = Instance.new("TextButton")
+ViniBtn.Size = UDim2.new(0.3, -10, 0, 25)
+ViniBtn.Position = UDim2.new(0, 80, 0.5, 5)
+ViniBtn.BackgroundColor3 = Theme.Accent
+ViniBtn.Text = "Canal do YouTube"
+ViniBtn.TextColor3 = Color3.new(1, 1, 1)
+ViniBtn.Font = Enum.Font.GothamBold
+ViniBtn.TextSize = 11
+ViniBtn.Parent = ViniLayout
+AddCorner(ViniBtn, 4)
+
+ViniBtn.MouseButton1Click:Connect(function()
+    PlayClickSound()
+    CopyToClipboard("https://youtube.com/@vini.xits.script14?si=nySDYR4FDk-Rjq5y")
+end)
+
+-- Frame para Thur.xits
+local ThurFrame = Instance.new("Frame")
+ThurFrame.Size = UDim2.new(1, -10, 0, 100)
+ThurFrame.Position = UDim2.new(0, 0, 0, 110)
+ThurFrame.BackgroundColor3 = Theme.ItemBG
+ThurFrame.Parent = TabCredits
+AddCorner(ThurFrame, 8)
+
+local ThurLayout = Instance.new("Frame")
+ThurLayout.Size = UDim2.new(1, 0, 1, 0)
+ThurLayout.BackgroundTransparency = 1
+ThurLayout.Parent = ThurFrame
+
+local ThurImage = Instance.new("ImageLabel")
+ThurImage.Size = UDim2.new(0, 60, 0, 60)
+ThurImage.Position = UDim2.new(0, 10, 0.5, -30)
+ThurImage.BackgroundTransparency = 1
+ThurImage.Image = "rbxassetid://114942474708890"
+ThurImage.Parent = ThurLayout
+
+local ThurName = Instance.new("TextLabel")
+ThurName.Size = UDim2.new(0.6, 0, 0, 30)
+ThurName.Position = UDim2.new(0, 80, 0.5, -15)
+ThurName.BackgroundTransparency = 1
+ThurName.Text = "Thur.xits"
+ThurName.TextColor3 = Theme.Accent
+ThurName.Font = Enum.Font.GothamBlack
+ThurName.TextSize = 14
+ThurName.TextXAlignment = Enum.TextXAlignment.Left
+ThurName.Parent = ThurLayout
+
+CreateSection(TabCredits, "AGRADECIMENTOS")
+
+local ThanksLabel = Instance.new("TextLabel")
+ThanksLabel.Size = UDim2.new(1, -10, 0, 60)
+ThanksLabel.Position = UDim2.new(0, 0, 0, 230)
+ThanksLabel.BackgroundTransparency = 1
+ThanksLabel.Text = "Obrigado por usar o Nexus Hub MM2!\nSe divirta e jogue com responsabilidade."
+ThanksLabel.TextColor3 = Theme.TextDim
+ThanksLabel.Font = Enum.Font.GothamSemibold
+ThanksLabel.TextSize = 12
+ThanksLabel.TextWrapped = true
+ThanksLabel.TextYAlignment = Enum.TextYAlignment.Top
+ThanksLabel.Parent = TabCredits
+
+-- Adicionar linha separadora
+local Separator = Instance.new("Frame")
+Separator.Size = UDim2.new(1, -20, 0, 1)
+Separator.Position = UDim2.new(0, 10, 0, 220)
+Separator.BackgroundColor3 = Theme.Accent
+Separator.BackgroundTransparency = 0.5
+Separator.Parent = TabCredits
+
+-- ==============================================================================
 -- FUNÇÕES PARA TEMA CUSTOMIZADO (CORRIGIDO)
 -- ==============================================================================
 local function ApplyThemeToGUI()
@@ -1950,6 +2071,12 @@ local function ApplyThemeToGUI()
                 child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
             end
         end
+    end
+    
+    -- Atualizar botão de YouTube na aba CRÉDITOS
+    if ViniBtn then
+        ViniBtn.BackgroundColor3 = Theme.Accent
+        ViniBtn.TextColor3 = Color3.new(1, 1, 1)
     end
     
     -- Atualizar todas as instâncias que usam as cores do tema
@@ -2365,9 +2492,9 @@ task.spawn(function()
 end)
 
 NexusNotify("NEXUS HUB MM2",
-    "Script loaded successfully!\n" ..
-    "- Fling with SPINNING effect enabled\n" ..
-    "- Custom Themes FIXED (title & buttons)\n" ..
-    "- Save system working with themes\n" ..
-    "- Positions loading FIXED for all elements\n" ..
-    "- Grab Gun button FIXED and working!", 5)
+    "SCRIPT CARREGADO COM SUCESSO" ..
+    "- Get Gun Aura corrigido" ..
+    "- Nova função para customizar o script" ..
+    "- Silient aim 100% de acerto" ..
+    "- Nova função fling" ..
+    "- Novo modo legit mode para murder" ..
