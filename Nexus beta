@@ -1882,7 +1882,7 @@ local ViniImage = Instance.new("ImageLabel")
 ViniImage.Size = UDim2.new(0, 60, 0, 60)
 ViniImage.Position = UDim2.new(0, 10, 0.5, -30)
 ViniImage.BackgroundTransparency = 1
-ViniImage.Image = "rbxassetid://105539608071275"
+ViniImage.Image = "rbxassetid://76303542908459"
 ViniImage.Parent = ViniLayout
 
 local ViniName = Instance.new("TextLabel")
@@ -1929,7 +1929,7 @@ local ThurImage = Instance.new("ImageLabel")
 ThurImage.Size = UDim2.new(0, 60, 0, 60)
 ThurImage.Position = UDim2.new(0, 10, 0.5, -30)
 ThurImage.BackgroundTransparency = 1
-ThurImage.Image = "rbxassetid://114942474708890"
+ThurImage.Image = "rbxassetid://74654092157484"
 ThurImage.Parent = ThurLayout
 
 local ThurName = Instance.new("TextLabel")
@@ -2492,9 +2492,10 @@ task.spawn(function()
 end)
 
 NexusNotify("NEXUS HUB MM2",
-    "SCRIPT CARREGADO COM SUCESSO" ..
-    "- Get Gun Aura corrigido" ..
-    "- Nova função para customizar o script" ..
-    "- Silient aim 100% de acerto" ..
-    "- Nova função fling" ..
-    "- Novo modo legit mode para murder" ..
+    "Script loaded successfully!\n" ..
+    "- Fling with SPINNING effect enabled\n" ..
+    "- Custom Themes FIXED (title & buttons)\n" ..
+    "- Save system working with themes\n" ..
+    "- Positions loading FIXED for all elements\n" ..
+    "- Grab Gun button FIXED and working!\n" ..
+    "- Nova aba CRÉDITOS adicionada!", 5)
