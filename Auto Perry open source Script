@@ -1,0 +1,424 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedFirst = game:GetService("ReplicatedFirst")
+
+local player = Players.LocalPlayer
+
+--===============================================================
+-- LIMPEZA DE SCRIPTS ANTIGOS
+--===============================================================
+if _G.NexusGhostConnection then
+    for _, conn in pairs(_G.NexusGhostConnection) do
+        conn:Disconnect()
+    end
+    _G.NexusGhostConnection = nil
+end
+
+if CoreGui:FindFirstChild("NexusInvisGUI") then
+    CoreGui.NexusInvisGUI:Destroy()
+end
+
+--===============================================================
+-- CONFIGURAÇÃO DO PERRY
+--===============================================================
+local Camera = workspace.CurrentCamera
+local RayParams = RaycastParams.new()
+RayParams.FilterType = Enum.RaycastFilterType.Exclude
+RayParams.FilterDescendantsInstances = {player.Character, workspace:FindFirstChild("FX")}
+
+local BallShadow, BallObject = nil, nil
+local PreviousPosition = nil
+local LastParry = 0
+
+local SPEED_THRESHOLD = 85 
+local PARRY_KEY = 112
+local LastAutoParry = 0
+
+-- Configuração da UI do jogo
+local ui = require(ReplicatedFirst.ui)
+if ui and ui.Inventory and ui.Inventory.Settings then
+    ui.Inventory.Settings["Deflect Keybind"] = "F1"
+    keypress(70)
+    keyrelease(70)
+end
+
+local function GetBallColor(target)
+    if not target then return Color3.new(1, 1, 1) end
+    local highlight = target:FindFirstChildOfClass("Highlight")
+    if highlight then return highlight.FillColor end
+    return (target:IsA("BasePart") and target.Color) or Color3.new(1, 1, 1)
+end
+
+local function GetVisualHeight(shadow)
+    if not shadow then return 0 end
+    return math.min(((math.max(0, shadow.Size.X - 5)) * 20) + 3, 100)
+end
+
+local function TriggerParry()
+    keypress(PARRY_KEY)
+    keyrelease(PARRY_KEY)
+end
+
+local function IsPathBlocked(ballPos, playerPos)
+    local direction = playerPos - ballPos
+    local result = workspace:Raycast(ballPos, direction, RayParams)
+    
+    if result and result.Instance then
+        if result.Instance.CanCollide and result.Instance.Transparency < 0.8 then
+            return true
+        end
+    end
+    return false
+end
+
+-- Variáveis de estado
+local autoParryActive = false
+local spamParryActive = false
+local spamThread = nil
+
+--===============================================================
+-- LÓGICA DO AUTO PERRY (ORIGINAL)
+--===============================================================
+local function UpdateAutoParry()
+    BallShadow = (BallShadow and BallShadow.Parent) and BallShadow or workspace.FX:FindFirstChild("BallShadow")
+    BallObject = (BallObject and BallObject.Parent) and BallObject or (workspace:FindFirstChild("Ball") or workspace:FindFirstChild("Part"))
+
+    if not BallShadow or not BallObject or not player.Character or not player.Character.PrimaryPart then  
+        PreviousPosition = nil  
+        return  
+    end  
+
+    local rootPart = player.Character.PrimaryPart  
+    local charPos = rootPart.Position
+    local height = GetVisualHeight(BallShadow)  
+    local currentPos = Vector3.new(BallShadow.Position.X, BallShadow.Position.Y + height, BallShadow.Position.Z)  
+
+    if PreviousPosition then  
+        local dt = RunService.RenderStepped:Wait()
+        local velocityVector = (currentPos - PreviousPosition) / dt  
+        local velocityMagnitude = velocityVector.Magnitude  
+        local ping = player:GetNetworkPing()
+        local ballColor = GetBallColor(BallObject)  
+        
+        if ballColor ~= Color3.new(1, 1, 1) then
+            if IsPathBlocked(currentPos, charPos) then
+                PreviousPosition = currentPos
+                return
+            end
+
+            local shouldParry = false
+            local distance = (charPos - currentPos).Magnitude
+            
+            local dirToPlayer = (charPos - currentPos).Unit
+            local velDir = velocityVector.Unit
+            local accuracy = velDir:Dot(dirToPlayer)
+
+            local curveDelay = math.clamp((1 - accuracy) * 0.1, 0, 0.15)
+
+            if velocityMagnitude < SPEED_THRESHOLD then
+                local leadTime = math.clamp(0.05 + (velocityMagnitude / 600), 0.05, 0.2)  
+                local predictedPos = currentPos + velocityVector * leadTime  
+                local flatDistance = (Vector3.new(charPos.X, 0, charPos.Z) - Vector3.new(predictedPos.X, 0, predictedPos.Z)).Magnitude  
+                local dynamicDistance = math.clamp(12 + velocityMagnitude * ping * 0.4, 8, 55)
+
+                if flatDistance <= (dynamicDistance - (curveDelay * 10)) then
+                    shouldParry = true
+                end
+            else
+                if accuracy > 0.15 then
+                    local timeToImpact = distance / velocityMagnitude
+                    local reactionWindow = 0.1 + (ping * 1.2) + (dt * 1.5) - curveDelay
+
+                    if timeToImpact <= reactionWindow then
+                        shouldParry = true
+                    end
+                end
+            end
+
+            if shouldParry and autoParryActive then
+                local jitter = math.random() * 0.02
+                local safeDelay = math.clamp(0.02 + (velocityMagnitude / 250), 0.01, 0.1)
+                
+                if (tick() - LastParry) > (safeDelay + jitter) then
+                    TriggerParry()
+                    LastParry = tick()
+                    LastAutoParry = tick()
+                end
+            end
+        end  
+    end  
+
+    PreviousPosition = currentPos
+end
+
+--===============================================================
+-- LÓGICA DO SPAM PERRY (DO SCRIPT ORIGINAL MESMO)
+--===============================================================
+local function StartSpamParry()
+    if spamThread then
+        spamThread = nil
+    end
+    
+    spamThread = task.spawn(function()
+        while spamParryActive do
+            TriggerParry()
+            task.wait(0.01) -- Exatamente como no script original
+        end
+    end)
+end
+
+local function StopSpamParry()
+    if spamThread then
+        task.cancel(spamThread)
+        spamThread = nil
+    end
+end
+
+--===============================================================
+-- INTERFACE NEXUS GHOST COMPACTA MODIFICADA
+--===============================================================
+local gui = Instance.new("ScreenGui")
+gui.Name = "NexusInvisGUI"
+gui.ResetOnSpawn = false
+gui.Parent = CoreGui
+
+local background = Instance.new("Frame")
+background.Size = UDim2.new(0, 160, 0, 150)
+background.Position = UDim2.new(0.02, 0, 0.4, 0)
+background.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+background.Active = true
+background.Draggable = true
+background.Parent = gui
+
+Instance.new("UICorner", background).CornerRadius = UDim.new(0, 10)
+
+local uiStroke = Instance.new("UIStroke", background)
+uiStroke.Color = Color3.fromRGB(140, 50, 255)
+uiStroke.Thickness = 1.5
+
+-- Header
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -15, 0, 15)
+title.Position = UDim2.new(0, 8, 0, 5)
+title.BackgroundTransparency = 1
+title.Text = "NEXUS PERRY"
+title.TextColor3 = Color3.fromRGB(180, 100, 255)
+title.TextSize = 12
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = background
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -15, 0, 10)
+subtitle.Position = UDim2.new(0, 8, 0, 18)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "v2.0 - Perry System"
+subtitle.TextColor3 = Color3.fromRGB(120, 120, 120)
+subtitle.TextSize = 7
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = background
+
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(1, -16, 0, 1)
+divider.Position = UDim2.new(0, 8, 0, 32)
+divider.BackgroundColor3 = Color3.fromRGB(140, 50, 255)
+divider.BackgroundTransparency = 0.7
+divider.Parent = background
+
+-- Botão AUTO PERRY
+local autoBtn = Instance.new("TextButton")
+autoBtn.Size = UDim2.new(1, -16, 0, 32)
+autoBtn.Position = UDim2.new(0, 8, 0, 42)
+autoBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+autoBtn.Text = ""
+autoBtn.AutoButtonColor = false
+autoBtn.Name = "AutoPerryBtn"
+autoBtn.Parent = background
+
+Instance.new("UICorner", autoBtn).CornerRadius = UDim.new(0, 6)
+
+local autoBtnStroke = Instance.new("UIStroke", autoBtn)
+autoBtnStroke.Thickness = 1.5
+
+local autoBtnText = Instance.new("TextLabel")
+autoBtnText.Size = UDim2.new(1, -10, 1, 0)
+autoBtnText.Position = UDim2.new(0, 10, 0, 0)
+autoBtnText.BackgroundTransparency = 1
+autoBtnText.Text = "AUTO PERRY: OFF"
+autoBtnText.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoBtnText.TextSize = 10
+autoBtnText.Font = Enum.Font.GothamBold
+autoBtnText.TextXAlignment = Enum.TextXAlignment.Left
+autoBtnText.Parent = autoBtn
+
+local autoStatusDot = Instance.new("Frame")
+autoStatusDot.Size = UDim2.new(0, 6, 0, 6)
+autoStatusDot.Position = UDim2.new(1, -12, 0.5, -3)
+autoStatusDot.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+autoStatusDot.Name = "AutoStatusDot"
+autoStatusDot.Parent = autoBtn
+Instance.new("UICorner", autoStatusDot).CornerRadius = UDim.new(1, 0)
+
+-- Botão SPAM PERRY
+local spamBtn = Instance.new("TextButton")
+spamBtn.Size = UDim2.new(1, -16, 0, 32)
+spamBtn.Position = UDim2.new(0, 8, 0, 82)
+spamBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+spamBtn.Text = ""
+spamBtn.AutoButtonColor = false
+spamBtn.Name = "SpamPerryBtn"
+spamBtn.Parent = background
+
+Instance.new("UICorner", spamBtn).CornerRadius = UDim.new(0, 6)
+
+local spamBtnStroke = Instance.new("UIStroke", spamBtn)
+spamBtnStroke.Thickness = 1.5
+
+local spamBtnText = Instance.new("TextLabel")
+spamBtnText.Size = UDim2.new(1, -10, 1, 0)
+spamBtnText.Position = UDim2.new(0, 10, 0, 0)
+spamBtnText.BackgroundTransparency = 1
+spamBtnText.Text = "SPAM PERRY: OFF"
+spamBtnText.TextColor3 = Color3.fromRGB(255, 255, 255)
+spamBtnText.TextSize = 10
+spamBtnText.Font = Enum.Font.GothamBold
+spamBtnText.TextXAlignment = Enum.TextXAlignment.Left
+spamBtnText.Parent = spamBtn
+
+local spamStatusDot = Instance.new("Frame")
+spamStatusDot.Size = UDim2.new(0, 6, 0, 6)
+spamStatusDot.Position = UDim2.new(1, -12, 0.5, -3)
+spamStatusDot.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+spamStatusDot.Name = "SpamStatusDot"
+spamStatusDot.Parent = spamBtn
+Instance.new("UICorner", spamStatusDot).CornerRadius = UDim.new(1, 0)
+
+local footer = Instance.new("TextLabel")
+footer.Size = UDim2.new(1, 0, 0, 10)
+footer.Position = UDim2.new(0, 0, 1, -12)
+footer.BackgroundTransparency = 1
+footer.Text = "Drag to move | G: Auto | H: Spam"
+footer.TextColor3 = Color3.fromRGB(80, 80, 100)
+footer.TextSize = 6
+footer.Font = Enum.Font.Gotham
+footer.Parent = background
+
+--===============================================================
+-- FUNÇÕES DE CONTROLE
+--===============================================================
+local function ToggleAutoPerry()
+    autoParryActive = not autoParryActive
+    
+    if autoParryActive then
+        -- Desativa spam se auto estiver ativo
+        if spamParryActive then
+            spamParryActive = false
+            StopSpamParry()
+        end
+    end
+    
+    RefreshUI()
+end
+
+local function ToggleSpamPerry()
+    spamParryActive = not spamParryActive
+    
+    if spamParryActive then
+        -- Desativa auto se spam estiver ativo
+        autoParryActive = false
+        
+        -- Inicia o spam exatamente como no script original
+        StartSpamParry()
+    else
+        -- Para o spam
+        StopSpamParry()
+    end
+    
+    RefreshUI()
+end
+
+function RefreshUI()
+    -- Atualiza AUTO PERRY
+    if autoParryActive then
+        autoBtnText.Text = "AUTO PERRY: ON"
+        TweenService:Create(autoBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(0, 150, 70)}):Play()
+        TweenService:Create(autoBtnStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(0, 220, 120)}):Play()
+        TweenService:Create(autoStatusDot, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(0, 255, 100)}):Play()
+    else
+        autoBtnText.Text = "AUTO PERRY: OFF"
+        TweenService:Create(autoBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(180, 40, 40)}):Play()
+        TweenService:Create(autoBtnStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(220, 80, 80)}):Play()
+        TweenService:Create(autoStatusDot, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(255, 50, 50)}):Play()
+    end
+    
+    -- Atualiza SPAM PERRY
+    if spamParryActive then
+        spamBtnText.Text = "SPAM PERRY: ON"
+        TweenService:Create(spamBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(200, 100, 0)}):Play()
+        TweenService:Create(spamBtnStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(255, 150, 0)}):Play()
+        TweenService:Create(spamStatusDot, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(255, 150, 0)}):Play()
+    else
+        spamBtnText.Text = "SPAM PERRY: OFF"
+        TweenService:Create(spamBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(180, 40, 40)}):Play()
+        TweenService:Create(spamBtnStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(220, 80, 80)}):Play()
+        TweenService:Create(spamStatusDot, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(255, 50, 50)}):Play()
+    end
+end
+
+-- Conectar botões
+autoBtn.MouseButton1Click:Connect(ToggleAutoPerry)
+spamBtn.MouseButton1Click:Connect(ToggleSpamPerry)
+
+--===============================================================
+-- LOOP PRINCIPAL E CONEXÕES
+--===============================================================
+local connections = {}
+
+-- Loop do Auto Perry
+connections[1] = RunService.RenderStepped:Connect(function()
+    UpdateAutoParry()
+end)
+
+-- Teclas de atalho
+connections[2] = UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed then
+        if input.KeyCode == Enum.KeyCode.G then
+            ToggleAutoPerry()
+        elseif input.KeyCode == Enum.KeyCode.H then
+            ToggleSpamPerry()
+        end
+    end
+end)
+
+-- Reset ao morrer
+connections[3] = player.CharacterAdded:Connect(function()
+    autoParryActive = false
+    spamParryActive = false
+    StopSpamParry()
+    task.wait(1)
+    RefreshUI()
+end)
+
+_G.NexusGhostConnection = connections
+
+-- Brilho no Título
+task.spawn(function()
+    while background and background.Parent do
+        TweenService:Create(title, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(120, 60, 220)}):Play()
+        task.wait(1.5)
+        TweenService:Create(title, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(180, 100, 255)}):Play()
+        task.wait(1.5)
+    end
+end)
+
+-- Efeito de abertura
+background.Position = UDim2.new(-0.2, 0, 0.4, 0)
+TweenService:Create(background, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Position = UDim2.new(0.02, 0, 0.4, 0)
+}):Play()
+
+RefreshUI()
