@@ -78,8 +78,18 @@ local DefaultConfig = {
     FlingSheriff = false,
     FlingMurderer = false,
     
+    -- AUTO FARM
+    CoinsReach = false,
+    AutoFarmCoins = false,
+    
     -- CUSTOM THEME
     CustomTheme = "Original", -- "Original", "Red", "Blue", "Verde", "Purple", "Yellow"
+    
+    -- KEYBINDS
+    GamepadEnabled = false,
+    SilentAimKey = "ButtonR2", -- RT
+    InvisibleKey = "ButtonY", -- Y
+    GrabGunKey = "ButtonB", -- B
     
     -- POSITIONS (Saved)
     GuiPositions = {}
@@ -227,6 +237,35 @@ local originalPosition = nil
 local spinAngle = 0
 local spinSpeed = 50 -- Velocidade do giro (graus por frame)
 
+-- Variáveis para AUTO FARM
+local coinOrig = {}
+local coinReachConn = nil
+local autoFarmCoinsRunning = false
+local autoFarmCoinsThread = nil
+
+-- Variáveis para Gamepad - CORRIGIDAS
+local gamepadConnections = {}
+local gamepadActive = false
+local keyCodes = {
+    ButtonR2 = Enum.KeyCode.ButtonR2,
+    ButtonY = Enum.KeyCode.ButtonY,
+    ButtonB = Enum.KeyCode.ButtonB,
+    ButtonA = Enum.KeyCode.ButtonA,
+    ButtonX = Enum.KeyCode.ButtonX,
+    ButtonL2 = Enum.KeyCode.ButtonL2,
+    ButtonR1 = Enum.KeyCode.ButtonR1,
+    ButtonL1 = Enum.KeyCode.ButtonL1,
+    DPadUp = Enum.KeyCode.DPadUp,
+    DPadDown = Enum.KeyCode.DPadDown,
+    DPadLeft = Enum.KeyCode.DPadLeft,
+    DPadRight = Enum.KeyCode.DPadRight
+}
+
+-- Variáveis para controle do RT (Silent Aim)
+local isRTPressed = false
+local lastRTInputTime = 0
+local rtHoldDuration = 0
+
 if _G.NexusHubLoaded then
     if CoreGui:FindFirstChild("NexusHubMain") then CoreGui.NexusHubMain:Destroy() end
     if CoreGui:FindFirstChild("ShootGui_Overlay_V19") then CoreGui.ShootGui_Overlay_V19:Destroy() end
@@ -271,6 +310,90 @@ local function PlayClickSound()
     end)
 end
 
+-- FUNÇÃO DRAGGABLE MODIFICADA - Só permite arrastar quando clica nas bordas dos 4 cantos
+local function MakeDraggableCornersOnly(frame)
+    local dragging, dragInput, dragStart, startPos
+    
+    -- Criar detectores de arrasto invisíveis nos 4 cantos
+    local cornerSize = 20 -- Tamanho da área clicável nos cantos
+    
+    -- Função para criar um detector de canto
+    local function createCornerDetector(position, size)
+        local detector = Instance.new("Frame")
+        detector.Name = "DragCorner_" .. position
+        detector.Size = UDim2.new(0, size, 0, size)
+        detector.BackgroundTransparency = 1
+        detector.ZIndex = frame.ZIndex + 1
+        detector.Parent = frame
+        
+        -- Posicionar o detector
+        if position == "TopLeft" then
+            detector.Position = UDim2.new(0, 0, 0, 0)
+        elseif position == "TopRight" then
+            detector.Position = UDim2.new(1, -size, 0, 0)
+        elseif position == "BottomLeft" then
+            detector.Position = UDim2.new(0, 0, 1, -size)
+        elseif position == "BottomRight" then
+            detector.Position = UDim2.new(1, -size, 1, -size)
+        end
+        
+        return detector
+    end
+    
+    -- Criar os 4 detectores de canto
+    local topLeftDetector = createCornerDetector("TopLeft", cornerSize)
+    local topRightDetector = createCornerDetector("TopRight", cornerSize)
+    local bottomLeftDetector = createCornerDetector("BottomLeft", cornerSize)
+    local bottomRightDetector = createCornerDetector("BottomRight", cornerSize)
+    
+    -- Função para iniciar arrasto
+    local function startDragging(input)
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+    
+    -- Conectar eventos de clique aos detectores
+    local detectors = {topLeftDetector, topRightDetector, bottomLeftDetector, bottomRightDetector}
+    
+    for _, detector in ipairs(detectors) do
+        detector.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                PlayClickSound()
+                startDragging(input)
+            end
+        end)
+    end
+    
+    -- Conectar movimento para todos os detectores
+    for _, detector in ipairs(detectors) do
+        detector.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end)
+    end
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale, 
+                startPos.X.Offset + delta.X, 
+                startPos.Y.Scale, 
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- Função draggable normal (para a MainFrame)
 local function MakeDraggable(frame, trigger)
     trigger = trigger or frame
     local dragging, dragInput, dragStart, startPos
@@ -385,7 +508,240 @@ local function NexusNotify(title, text, duration)
 end
 
 -- ==============================================================================
--- BOTÕES FLUTUANTES (GRAB GUN E INVISIBLE)
+-- FUNÇÃO SILENT AIM DIRETO (PARA GAMEPAD) - CORRIGIDA
+-- ==============================================================================
+local function GetLeadShotPosition(targetRootPart)
+    local currentPos = targetRootPart.Position
+    if Config.LeadShot then 
+        local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
+        currentPos = currentPos + (targetRootPart.Velocity * ping * 1.5) 
+    end
+    return currentPos
+end
+
+local function PerformSilentAimDirectly()
+    if not Config.SilentAim then
+        return false
+    end
+    
+    local gun = nil
+    
+    -- Primeiro verifica na mão do personagem
+    for _, i in ipairs(LocalPlayer.Character:GetChildren()) do
+        if i:IsA("Tool") and (string.find(string.lower(i.Name), "gun") or i.Name == "Revolver") then
+            gun = i
+            break
+        end
+    end
+    
+    -- Se não encontrou na mão, verifica na mochila
+    if not gun then
+        for _, i in ipairs(LocalPlayer.Backpack:GetChildren()) do
+            if i:IsA("Tool") and (string.find(string.lower(i.Name), "gun") or i.Name == "Revolver") then
+                gun = i
+                break
+            end
+        end
+    end
+    
+    if not gun then
+        return false
+    end
+    
+    local targetPlr = nil
+    for plrName, role in pairs(RoleCache) do
+        if role == "Murderer" then
+            targetPlr = Players:FindFirstChild(plrName)
+            if targetPlr and targetPlr.Character and targetPlr.Character:FindFirstChild("HumanoidRootPart") then
+                break
+            else
+                targetPlr = nil
+            end
+        end
+    end
+    
+    if not targetPlr or not targetPlr.Character or not targetPlr.Character:FindFirstChild("HumanoidRootPart") then
+        return false
+    end
+    
+    if Config.WallCheck then
+        local origin = Camera.CFrame.Position
+        local targetPosRaw = targetPlr.Character.HumanoidRootPart.Position
+        local direction = (targetPosRaw - origin).Unit * (targetPosRaw - origin).Magnitude
+        
+        local rayParams = RaycastParams.new()
+        rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPlr.Character, workspace:FindFirstChild("GunDrop")}
+        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+        
+        if workspace:Raycast(origin, direction, rayParams) then
+            return false
+        end
+    end
+    
+    if gun.Parent == LocalPlayer.Backpack then
+        LocalPlayer.Character.Humanoid:EquipTool(gun)
+        task.wait(0.1)
+    end
+    
+    local targetRoot = targetPlr.Character.HumanoidRootPart
+    local targetPos = GetLeadShotPosition(targetRoot)
+    
+    local args = {CFrame.new(Camera.CFrame.Position, targetPos), CFrame.new(targetPos)}
+    
+    if gun:FindFirstChild("Shoot") then
+        gun.Shoot:FireServer(unpack(args))
+        return true
+    end
+    
+    return false
+end
+
+-- ==============================================================================
+-- FUNÇÃO GRAB GUN MELHORADA - CORRIGIDA
+-- ==============================================================================
+local function PerformGrabGun()
+    PlayClickSound()
+    
+    -- Tenta encontrar a arma dropada de várias maneiras
+    local gunDrop = Workspace:FindFirstChild("GunDrop") 
+    if not gunDrop then
+        -- Procura em todas as partes do workspace
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj.Name == "GunDrop" and obj:IsA("BasePart") then
+                gunDrop = obj
+                break
+            end
+        end
+    end
+    
+    if gunDrop and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local Root = LocalPlayer.Character.HumanoidRootPart
+        gunDrop.CanCollide = false
+        gunDrop.CFrame = Root.CFrame + Vector3.new(0, 0, -2) -- Coloca na frente do jogador
+        gunDrop.Velocity = Vector3.new(0,0,0)
+        NexusNotify("GRAB", "Gun Teleported!", 1)
+        
+        if GrabBtn then
+            GrabBtn.Text = "SUCCESS"
+            GrabBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
+            local grabStroke = GrabFrame:FindFirstChildOfClass("UIStroke")
+            if grabStroke then
+                grabStroke.Color = Color3.fromRGB(0, 255, 100)
+            end
+            
+            task.delay(0.5, function()
+                if GrabBtn then
+                    GrabBtn.Text = "GRAB GUN"
+                    GrabBtn.TextColor3 = Theme.Accent
+                    if grabStroke then
+                        grabStroke.Color = Theme.Accent
+                    end
+                end
+            end)
+        end
+        return true
+    else
+        NexusNotify("INFO", "No gun on map yet.", 1)
+        return false
+    end
+end
+
+-- ==============================================================================
+-- SISTEMA DE GAMEPAD CORRIGIDO
+-- ==============================================================================
+local function GetKeyCodeFromString(keyString)
+    return keyCodes[keyString] or Enum.KeyCode[keyString]
+end
+
+local function SetupGamepadControls()
+    -- Limpar conexões anteriores
+    for _, conn in pairs(gamepadConnections) do
+        conn:Disconnect()
+    end
+    gamepadConnections = {}
+    
+    if Config.GamepadEnabled then
+        -- Sistema de detecção contínua para RT (Silent Aim)
+        local silentAimKey = GetKeyCodeFromString(Config.SilentAimKey)
+        if silentAimKey then
+            local connBegan = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                if not gameProcessed and input.KeyCode == silentAimKey then
+                    isRTPressed = true
+                    lastRTInputTime = tick()
+                    rtHoldDuration = 0
+                    
+                    -- Dispara imediatamente quando RT é pressionado
+                    if Config.SilentAim then
+                        local success = PerformSilentAimDirectly()
+                        if success then
+                            NexusNotify("SILENT AIM", "Fired at Murderer!", 1)
+                        end
+                    end
+                end
+            end)
+            
+            local connEnded = UserInputService.InputEnded:Connect(function(input, gameProcessed)
+                if not gameProcessed and input.KeyCode == silentAimKey then
+                    isRTPressed = false
+                    rtHoldDuration = 0
+                end
+            end)
+            
+            table.insert(gamepadConnections, connBegan)
+            table.insert(gamepadConnections, connEnded)
+        end
+        
+        -- Conexão para Invisible (Y) - Apenas quando pressionado
+        local invisibleKey = GetKeyCodeFromString(Config.InvisibleKey)
+        if invisibleKey then
+            local conn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                if not gameProcessed and input.KeyCode == invisibleKey then
+                    ToggleInvis()
+                end
+            end)
+            table.insert(gamepadConnections, conn)
+        end
+        
+        -- Conexão para Grab Gun (B) - Apenas quando pressionado
+        local grabGunKey = GetKeyCodeFromString(Config.GrabGunKey)
+        if grabGunKey then
+            local conn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                if not gameProcessed and input.KeyCode == grabGunKey then
+                    PerformGrabGun()
+                end
+            end)
+            table.insert(gamepadConnections, conn)
+        end
+        
+        -- Loop para disparo contínuo do RT enquanto pressionado
+        task.spawn(function()
+            while Config.GamepadEnabled do
+                if isRTPressed and Config.SilentAim then
+                    local currentTime = tick()
+                    rtHoldDuration = currentTime - lastRTInputTime
+                    
+                    -- Dispara a cada 0.3 segundos enquanto RT está pressionado
+                    if rtHoldDuration > 0.3 then
+                        local success = PerformSilentAimDirectly()
+                        lastRTInputTime = currentTime
+                    end
+                end
+                task.wait(0.05) -- Loop rápido para responsividade
+            end
+        end)
+        
+        -- Mostrar notificação
+        NexusNotify("GAMEPAD", "Controles habilitados!\nRT: Silent Aim (Auto-fire)\nY: Invisible\nB: Grab Gun", 5)
+        gamepadActive = true
+    else
+        gamepadActive = false
+        isRTPressed = false
+        NexusNotify("GAMEPAD", "Controles desabilitados", 3)
+    end
+end
+
+-- ==============================================================================
+-- BOTÕES FLUTUANTES (GRAB GUN E INVISIBLE) - COM TRANSPARÊNCIA
 -- ==============================================================================
 local GrabGunGui = Instance.new("ScreenGui")
 GrabGunGui.Name = "NexusGrabGunBtn"
@@ -398,6 +754,7 @@ GrabFrame.Parent = GrabGunGui
 GrabFrame.Size = UDim2.new(0, 80, 0, 30)
 GrabFrame.Position = UDim2.new(0.7, 0, 0.5, 0)
 GrabFrame.BackgroundColor3 = Theme.Background
+GrabFrame.BackgroundTransparency = 0.5
 GrabFrame.Visible = false
 GrabFrame.BorderSizePixel = 0
 AddCorner(GrabFrame, 6)
@@ -413,30 +770,12 @@ GrabBtn.Font = Enum.Font.GothamBlack
 GrabBtn.TextSize = 11
 GrabBtn.AutoButtonColor = true
 GrabBtn.Name = "GrabButtonText"
-MakeDraggable(GrabFrame, GrabBtn)
 
--- CORREÇÃO: Adicionar função de clique para o botão Grab Gun
-GrabBtn.MouseButton1Click:Connect(function()
-    PlayClickSound()
-    if foundGunDrop and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local Root = LocalPlayer.Character.HumanoidRootPart
-        foundGunDrop.CanCollide = false
-        foundGunDrop.CFrame = Root.CFrame
-        foundGunDrop.Velocity = Vector3.new(0,0,0)
-        NexusNotify("GRAB", "Gun Teleported!", 1)
-        GrabBtn.Text = "SUCCESS"
-        GrabBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
-        GrabStroke.Color = Color3.fromRGB(0, 255, 100)
-        
-        task.delay(0.5, function()
-            GrabBtn.Text = "GRAB GUN"
-            GrabBtn.TextColor3 = Theme.Accent
-            GrabStroke.Color = Theme.Accent
-        end)
-    else
-        NexusNotify("INFO", "No gun on map yet.", 1)
-    end
-end)
+-- Apenas arrasta pelos cantos
+MakeDraggableCornersOnly(GrabFrame)
+
+-- Conectar função de clique para o botão Grab Gun
+GrabBtn.MouseButton1Click:Connect(PerformGrabGun)
 
 local InvisGui = Instance.new("ScreenGui")
 InvisGui.Name = "NexusInvisBtn"
@@ -449,6 +788,7 @@ InvisFrame.Parent = InvisGui
 InvisFrame.Size = UDim2.new(0, 80, 0, 30)
 InvisFrame.Position = UDim2.new(0.7, 0, 0.6, 0)
 InvisFrame.BackgroundColor3 = Theme.Background
+InvisFrame.BackgroundTransparency = 0.5
 InvisFrame.Visible = false
 InvisFrame.BorderSizePixel = 0
 AddCorner(InvisFrame, 6)
@@ -463,7 +803,8 @@ InvisBtn.TextColor3 = Theme.Ghost
 InvisBtn.Font = Enum.Font.GothamBlack
 InvisBtn.TextSize = 11
 InvisBtn.AutoButtonColor = true
-MakeDraggable(InvisFrame, InvisBtn)
+-- Apenas arrasta pelos cantos
+MakeDraggableCornersOnly(InvisFrame)
 
 -- ==============================================================================
 -- SISTEMA DE FLING COM GIRO RÁPIDO
@@ -592,17 +933,8 @@ task.spawn(function()
 end)
 
 -- ==============================================================================
--- SHOOT GUI E LEADSHOT
+-- SHOOT GUI - COM TRANSPARÊNCIA (PARA USO COM MOUSE)
 -- ==============================================================================
-local function GetLeadShotPosition(targetRootPart)
-    local currentPos = targetRootPart.Position
-    if Config.LeadShot then 
-        local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
-        currentPos = currentPos + (targetRootPart.Velocity * ping * 1.5) 
-    end
-    return currentPos
-end
-
 ShootGui = Instance.new("ScreenGui")
 ShootGui.Name = "ShootGui_Overlay_V19"
 ShootGui.Parent = CoreGui
@@ -612,6 +944,7 @@ ShootGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ShootButton = Instance.new("TextButton")
 ShootButton.Parent = ShootGui
 ShootButton.BackgroundColor3 = Theme.Background
+ShootButton.BackgroundTransparency = 0.5
 ShootButton.Position = UDim2.new(0.65, 0, 0.6, 0)
 ShootButton.Size = UDim2.new(0, 220, 0, 80)
 ShootButton.Font = Enum.Font.GothamBold
@@ -652,86 +985,42 @@ task.spawn(function()
     end
 end)
 
-MakeDraggable(ShootButton)
+-- Apenas arrasta pelos cantos
+MakeDraggableCornersOnly(ShootButton)
 
 if Config.SilentAim then
     ShootGui.Enabled = true
 end
 
-ShootButton.MouseButton1Click:Connect(function()
+-- Função para executar o Silent Aim via mouse
+local function PerformSilentAimMouse()
     PlayClickSound()
-    local gun = nil
-    
-    for _, i in ipairs(LocalPlayer.Character:GetChildren()) do
-        if i:IsA("Tool") and (string.find(string.lower(i.Name), "gun") or i.Name == "Revolver") then
-            gun = i
-        end
-    end
-    
-    if not gun then
-        for _, i in ipairs(LocalPlayer.Backpack:GetChildren()) do
-            if i:IsA("Tool") and (string.find(string.lower(i.Name), "gun") or i.Name == "Revolver") then
-                gun = i
-            end
-        end
-    end
-    
-    ShootButton.Text = "FIRED"
-    ShootStroke.Color = Color3.fromRGB(255, 50, 50)
-    
-    task.delay(0.2, function()
-        ShootButton.Text = "NEXUS AIM"
-        ShootStroke.Color = Theme.Accent
-    end)
-    
-    if not gun then
+    if not Config.SilentAim then
         return
     end
     
-    local targetPlr = nil
-    for plrName, role in pairs(RoleCache) do
-        if role == "Murderer" then
-            targetPlr = Players:FindFirstChild(plrName)
-            break
-        end
-    end
+    local success = PerformSilentAimDirectly()
     
-    if not targetPlr or not targetPlr.Character or not targetPlr.Character:FindFirstChild("HumanoidRootPart") then
-        return
-    end
-    
-    if Config.WallCheck then
-        local origin = Camera.CFrame.Position
-        local targetPosRaw = targetPlr.Character.HumanoidRootPart.Position
-        local direction = (targetPosRaw - origin).Unit * (targetPosRaw - origin).Magnitude
+    if success then
+        ShootButton.Text = "FIRED"
+        ShootStroke.Color = Color3.fromRGB(255, 50, 50)
         
-        local rayParams = RaycastParams.new()
-        rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPlr.Character, workspace:FindFirstChild("GunDrop")}
-        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+        task.delay(0.2, function()
+            ShootButton.Text = "NEXUS AIM"
+            ShootStroke.Color = Theme.Accent
+        end)
+    else
+        ShootButton.Text = "NO TARGET"
+        ShootStroke.Color = Color3.fromRGB(255, 50, 50)
         
-        if workspace:Raycast(origin, direction, rayParams) then
-            ShootButton.Text = "BLOCKED"
-            task.delay(0.2, function()
-                ShootButton.Text = "NEXUS AIM"
-            end)
-            return
-        end
+        task.delay(0.5, function()
+            ShootButton.Text = "NEXUS AIM"
+            ShootStroke.Color = Theme.Accent
+        end)
     end
-    
-    if gun.Parent == LocalPlayer.Backpack then
-        LocalPlayer.Character.Humanoid:EquipTool(gun)
-        task.wait()
-    end
-    
-    local targetRoot = targetPlr.Character.HumanoidRootPart
-    local targetPos = GetLeadShotPosition(targetRoot)
-    
-    local args = {CFrame.new(Camera.CFrame.Position, targetPos), CFrame.new(targetPos)}
-    
-    if gun:FindFirstChild("Shoot") then
-        gun.Shoot:FireServer(unpack(args))
-    end
-end)
+end
+
+ShootButton.MouseButton1Click:Connect(PerformSilentAimMouse)
 
 -- ==============================================================================
 -- LOGICA DO JOGO
@@ -863,11 +1152,11 @@ task.spawn(function()
         foundGunDrop = dropped
         
         if GrabFrame then
-            GrabFrame.Visible = Config.ShowGrabBtn
+            GrabFrame.Visible = Config.ShowGrabBtn and not Config.GamepadEnabled
         end
         
         if InvisFrame then
-            InvisFrame.Visible = Config.ShowInvisBtn
+            InvisFrame.Visible = Config.ShowInvisBtn and not Config.GamepadEnabled
         end
 
         if dropped and not wasGunDropped then
@@ -1341,6 +1630,128 @@ end
 RunService.RenderStepped:Connect(UpdateESP)
 
 -- ==============================================================================
+-- FUNÇÃO AUTO FARM COINS
+-- ==============================================================================
+local function AutoFarmCoinsFunc()
+    local function GetMap()
+        while true do
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if obj:GetAttribute("MapID") and obj:FindFirstChild("CoinContainer") then
+                    return obj
+                end
+            end
+            task.wait(0.1)
+        end
+    end
+
+    local function getNearest()
+        local map = GetMap()
+        local closest, dist = nil, math.huge
+        
+        -- Verificar se o jogador está vivo
+        local char = LocalPlayer.Character
+        if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
+            return nil
+        end
+        
+        local HRP = char:FindFirstChild("HumanoidRootPart")
+        if not HRP then return nil end
+        
+        for _, coin in ipairs(map.CoinContainer:GetChildren()) do
+            local v = coin:FindFirstChild("CoinVisual")
+            if v and not v:GetAttribute("Collected") then
+                local d = (HRP.Position - coin.Position).Magnitude
+                if d < dist then
+                    closest = coin
+                    dist = d
+                end
+            end
+        end
+        return closest
+    end
+
+    local function tp(hp)
+        local char = LocalPlayer.Character
+        if not char or not char:FindFirstChild("Humanoid") then return end
+        
+        local HRP = char:FindFirstChild("HumanoidRootPart")
+        local Humanoid = char:FindFirstChild("Humanoid")
+        if not HRP or not Humanoid then return end
+        
+        -- Verificar se está vivo
+        if Humanoid.Health <= 0 then
+            autoFarmCoinsRunning = false
+            return
+        end
+        
+        Humanoid:ChangeState(11)
+        local d = (HRP.Position - hp.Position).Magnitude
+        local t = TweenService:Create(HRP, TweenInfo.new(d / 25, Enum.EasingStyle.Linear), {CFrame = hp.CFrame})
+        t:Play()
+        t.Completed:Wait()
+    end
+
+    while autoFarmCoinsRunning and task.wait(0.1) do
+        -- Verificar se o jogador está vivo
+        local char = LocalPlayer.Character
+        if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
+            autoFarmCoinsRunning = false
+            if Config.AutoFarmCoins then
+                Config.AutoFarmCoins = false
+                NexusNotify("AUTO FARM", "Farm stopped - Player died", 3)
+            end
+            break
+        end
+        
+        local target = getNearest()
+        if target then
+            tp(target)
+            local v = target:FindFirstChild("CoinVisual")
+            while v and not v:GetAttribute("Collected") and v.Parent do
+                -- Verificar novamente se está vivo
+                local char = LocalPlayer.Character
+                if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
+                    autoFarmCoinsRunning = false
+                    break
+                end
+                
+                local n = getNearest()
+                if n and n ~= target then break end
+                task.wait(0.1)
+            end
+        else
+            task.wait(0.5) -- Esperar um pouco se não houver moedas
+        end
+    end
+end
+
+-- ==============================================================================
+-- VERIFICAÇÃO DE MORTE PARA AUTO FARM
+-- ==============================================================================
+task.spawn(function()
+    while true do
+        if Config.AutoFarmCoins and autoFarmCoinsRunning then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                if char.Humanoid.Health <= 0 then
+                    -- Jogador morreu, parar auto farm
+                    autoFarmCoinsRunning = false
+                    Config.AutoFarmCoins = false
+                    
+                    if autoFarmCoinsThread then
+                        task.cancel(autoFarmCoinsThread)
+                        autoFarmCoinsThread = nil
+                    end
+                    
+                    NexusNotify("AUTO FARM", "Stopped - Player died", 3)
+                end
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+-- ==============================================================================
 -- UI BUILDER (MAIN MENU)
 -- ==============================================================================
 local ScreenGui = Instance.new("ScreenGui")
@@ -1348,6 +1759,34 @@ ScreenGui.Name = "NexusHubMain"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Limpar conexões quando o script for destruído
+ScreenGui.Destroying:Connect(function()
+    -- Limpar Coins Reach
+    if coinReachConn then
+        coinReachConn:Disconnect()
+        coinReachConn = nil
+    end
+    
+    for obj, originalSize in pairs(coinOrig) do
+        if obj and obj.Parent then
+            obj.Size = originalSize
+        end
+    end
+    
+    -- Parar Auto Farm
+    autoFarmCoinsRunning = false
+    if autoFarmCoinsThread then
+        task.cancel(autoFarmCoinsThread)
+        autoFarmCoinsThread = nil
+    end
+    
+    -- Limpar conexões do gamepad
+    for _, conn in pairs(gamepadConnections) do
+        conn:Disconnect()
+    end
+    gamepadConnections = {}
+end)
 
 ToggleButton = Instance.new("TextButton")
 ToggleButton.Parent = ScreenGui
@@ -1591,6 +2030,82 @@ local function CreateInput(parent, text, placeholder, defaultVal, callback)
     end)
 end
 
+local function CreateKeybind(parent, text, defaultVal, callback)
+    local KeybindFrame = Instance.new("Frame")
+    KeybindFrame.Size = UDim2.new(1, -10, 0, 32)
+    KeybindFrame.BackgroundColor3 = Theme.ItemBG
+    KeybindFrame.Parent = parent
+    AddCorner(KeybindFrame, 6)
+    
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(0.6, 0, 1, 0)
+    Label.Position = UDim2.new(0, 8, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = text
+    Label.TextColor3 = Theme.Text
+    Label.Font = Enum.Font.GothamSemibold
+    Label.TextSize = 12
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = KeybindFrame
+    
+    local KeyBtn = Instance.new("TextButton")
+    KeyBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
+    KeyBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
+    KeyBtn.BackgroundColor3 = Theme.InputBG
+    KeyBtn.Text = defaultVal
+    KeyBtn.TextColor3 = Theme.Accent
+    KeyBtn.Font = Enum.Font.GothamBold
+    KeyBtn.TextSize = 11
+    KeyBtn.Parent = KeybindFrame
+    AddCorner(KeyBtn, 4)
+    
+    local KeyStroke = AddStroke(KeyBtn, Color3.fromRGB(50, 50, 60), 1)
+    
+    local listening = false
+    
+    KeyBtn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        listening = true
+        KeyBtn.Text = "..."
+        KeyBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+        KeyStroke.Color = Color3.fromRGB(255, 50, 50)
+    end)
+    
+    local connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if listening and not gameProcessed then
+            local keyName = tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
+            
+            -- Verificar se é um botão válido do gamepad
+            if keyCodes[keyName] or keyName:find("Button") or keyName:find("DPad") then
+                KeyBtn.Text = keyName
+                KeyBtn.TextColor3 = Theme.Accent
+                KeyStroke.Color = Theme.Accent
+                listening = false
+                
+                if callback then
+                    callback(keyName)
+                end
+                
+                -- Desconectar após definir a tecla
+                connection:Disconnect()
+            else
+                NexusNotify("KEYBIND", "Por favor, use um botão de gamepad válido!", 2)
+            end
+        end
+    end)
+    
+    -- Se não definir uma tecla em 10 segundos, cancelar
+    task.delay(10, function()
+        if listening then
+            listening = false
+            KeyBtn.Text = defaultVal
+            KeyBtn.TextColor3 = Theme.Accent
+            KeyStroke.Color = Theme.Accent
+            connection:Disconnect()
+        end
+    end)
+end
+
 -- ==============================================================================
 -- TABS
 -- ==============================================================================
@@ -1803,28 +2318,31 @@ CreateToggle(TabLegit, "Show Grab Floating Btn", Config.ShowGrabBtn, function(v)
     Config.ShowGrabBtn = v
 end)
 CreateButton(TabLegit, "FORCE GRAB GUN (Click)", function()
-    PlayClickSound()
-    if foundGunDrop and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local Root = LocalPlayer.Character.HumanoidRootPart
-        foundGunDrop.CanCollide = false
-        foundGunDrop.CFrame = Root.CFrame
-        foundGunDrop.Velocity = Vector3.new(0,0,0)
-        NexusNotify("GRAB", "Gun Teleported!", 1)
-        GrabBtn.Text = "SUCCESS"
-        GrabBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
-        GrabStroke.Color = Color3.fromRGB(0, 255, 100)
-        
-        task.delay(0.5, function()
-            GrabBtn.Text = "GRAB GUN"
-            GrabBtn.TextColor3 = Theme.Accent
-            GrabStroke.Color = Theme.Accent
-        end)
-    else
-        NexusNotify("INFO", "No gun on map yet.", 1)
-    end
+    PerformGrabGun()
 end)
 CreateInput(TabLegit, "Grab Dist", "Ex: 15", tostring(Config.GrabDistance), function(txt)
     Config.GrabDistance = tonumber(txt) or 15
+end)
+
+CreateSection(TabLegit, "TELEPORT")
+CreateButton(TabLegit, "TP TO MAP", function()
+    PlayClickSound()
+    
+    local map = nil
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:GetAttribute("MapID") then
+            map = obj
+            break
+        end
+    end
+    
+    if map and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local root = LocalPlayer.Character.HumanoidRootPart
+        root.CFrame = map.CFrame + Vector3.new(0, 10, 0)
+        NexusNotify("TELEPORT", "Teleported to map!", 3)
+    else
+        NexusNotify("TELEPORT", "Map not found!", 3)
+    end
 end)
 
 CreateSection(TabLegit, "GHOST / INVISIBLE")
@@ -1847,224 +2365,489 @@ CreateInput(TabLegit, "Power (Def: 50)", "Ex: 80", tostring(Config.JumpPowerValu
 end)
 
 -- ==============================================================================
--- ABA CRÉDITOS (COMPLETA COM CANAL DO YUDY.XITS)
+-- ABA AUTO FARM
 -- ==============================================================================
-local TabCredits = CreateTab("CRÉDITOS")
+local TabAutoFarm = CreateTab("AUTO FARM")
 
--- Função para copiar para o clipboard
-local function CopyToClipboard(text)
-    if setclipboard then
-        setclipboard(text)
+CreateSection(TabAutoFarm, "COINS REACH")
+CreateToggle(TabAutoFarm, "Coins Reach (4x Size)", Config.CoinsReach, function(v)
+    Config.CoinsReach = v
+    
+    if v then
+        -- Ativar Coins Reach
+        coinOrig = {}
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj.Name == "Coin_Server" and obj:IsA("BasePart") then
+                if not coinOrig[obj] then
+                    coinOrig[obj] = obj.Size
+                end
+                obj.Size = coinOrig[obj] * 4
+            end
+        end
+        
+        coinReachConn = Workspace.DescendantAdded:Connect(function(obj)
+            if obj.Name == "Coin_Server" and obj:IsA("BasePart") then
+                if not coinOrig[obj] then
+                    coinOrig[obj] = obj.Size
+                end
+                obj.Size = coinOrig[obj] * 4
+            end
+        end)
+        
+        NexusNotify("COINS REACH", "Enabled - Coins 4x bigger", 3)
     else
-        local textbox = Instance.new("TextBox")
-        textbox.Text = text
-        textbox.Parent = CoreGui
-        textbox:SelectAll()
-        textbox:Copy()
-        textbox:Destroy()
+        -- Desativar Coins Reach
+        for obj, originalSize in pairs(coinOrig) do
+            if obj and obj.Parent then
+                obj.Size = originalSize
+            end
+        end
+        
+        if coinReachConn then
+            coinReachConn:Disconnect()
+            coinReachConn = nil
+        end
+        
+        coinOrig = {}
+        NexusNotify("COINS REACH", "Disabled", 3)
     end
-    NexusNotify("CLIPBOARD", "Link copiado!", 2)
+end)
+
+CreateSection(TabAutoFarm, "AUTO FARM COINS")
+CreateToggle(TabAutoFarm, "Auto Farm Coins", Config.AutoFarmCoins, function(v)
+    Config.AutoFarmCoins = v
+    
+    if v then
+        autoFarmCoinsRunning = true
+        autoFarmCoinsThread = task.spawn(function()
+            AutoFarmCoinsFunc()
+        end)
+        NexusNotify("AUTO FARM", "Started farming coins", 3)
+    else
+        autoFarmCoinsRunning = false
+        if autoFarmCoinsThread then
+            task.cancel(autoFarmCoinsThread)
+            autoFarmCoinsThread = nil
+        end
+        NexusNotify("AUTO FARM", "Stopped farming coins", 3)
+    end
+end)
+
+CreateButton(TabAutoFarm, "FORCE STOP FARM (if dead)", function(btn, frame)
+    PlayClickSound()
+    autoFarmCoinsRunning = false
+    Config.AutoFarmCoins = false
+    
+    if autoFarmCoinsThread then
+        task.cancel(autoFarmCoinsThread)
+        autoFarmCoinsThread = nil
+    end
+    
+    btn.Text = "STOPPED!"
+    btn.TextColor3 = Color3.fromRGB(255, 50, 50)
+    
+    task.delay(1, function()
+        if btn then
+            btn.Text = "FORCE STOP FARM (if dead)"
+            btn.TextColor3 = Theme.Accent
+        end
+    end)
+    
+    NexusNotify("AUTO FARM", "Force stopped farming", 3)
+end)
+
+-- ==============================================================================
+-- ABA SETTINGS COM KEYBINDS
+-- ==============================================================================
+local TabSettings = CreateTab("SETTINGS")
+
+CreateSection(TabSettings, "GAMEPAD CONTROLS")
+CreateToggle(TabSettings, "Enable Gamepad Controls", Config.GamepadEnabled, function(v)
+    Config.GamepadEnabled = v
+    SetupGamepadControls()
+end)
+
+CreateSection(TabSettings, "KEYBINDS")
+CreateKeybind(TabSettings, "Silent Aim (RT)", Config.SilentAimKey, function(key)
+    Config.SilentAimKey = key
+    SetupGamepadControls()
+end)
+
+CreateKeybind(TabSettings, "Invisible (Y)", Config.InvisibleKey, function(key)
+    Config.InvisibleKey = key
+    SetupGamepadControls()
+end)
+
+CreateKeybind(TabSettings, "Grab Gun (B)", Config.GrabGunKey, function(key)
+    Config.GrabGunKey = key
+    SetupGamepadControls()
+end)
+
+CreateSection(TabSettings, "CUSTOM THEME")
+
+local themeNames = {"Original", "Red", "Blue", "Verde", "Purple", "Yellow"}
+
+FirstRow = Instance.new("Frame")
+FirstRow.Size = UDim2.new(1, -10, 0, 32)
+FirstRow.BackgroundTransparency = 1
+FirstRow.Parent = TabSettings
+
+for i = 1, 3 do
+    local themeName = themeNames[i]
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0.32, -5, 1, 0)
+    Btn.Position = UDim2.new((i-1) * 0.33, 0, 0, 0)
+    Btn.BackgroundColor3 = Theme.ItemBG
+    Btn.Text = themeName
+    Btn.TextColor3 = Config.CustomTheme == themeName and Theme.Accent or Theme.TextDim
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 11
+    Btn.Parent = FirstRow
+    AddCorner(Btn, 4)
+    
+    Btn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        SetTheme(themeName)
+        for j = 1, 3 do
+            local child = FirstRow:GetChildren()[j]
+            if child:IsA("TextButton") then
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+        for j = 1, 3 do
+            local child = SecondRow:GetChildren()[j]
+            if child:IsA("TextButton") then
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+    end)
 end
 
-CreateSection(TabCredits, "CRIADORES DO SCRIPT")
+SecondRow = Instance.new("Frame")
+SecondRow.Size = UDim2.new(1, -10, 0, 32)
+SecondRow.Position = UDim2.new(0, 0, 0, 38)
+SecondRow.BackgroundTransparency = 1
+SecondRow.Parent = TabSettings
 
--- Frame para Vini.xits.script
-local ViniFrame = Instance.new("Frame")
-ViniFrame.Size = UDim2.new(1, -10, 0, 100)
-ViniFrame.BackgroundColor3 = Theme.ItemBG
-ViniFrame.Parent = TabCredits
-AddCorner(ViniFrame, 8)
+for i = 4, 6 do
+    local themeName = themeNames[i]
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0.32, -5, 1, 0)
+    Btn.Position = UDim2.new((i-4) * 0.33, 0, 0, 0)
+    Btn.BackgroundColor3 = Theme.ItemBG
+    Btn.Text = themeName
+    Btn.TextColor3 = Config.CustomTheme == themeName and Theme.Accent or Theme.TextDim
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 11
+    Btn.Parent = SecondRow
+    AddCorner(Btn, 4)
+    
+    Btn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        SetTheme(themeName)
+        for j = 1, 3 do
+            local child = FirstRow:GetChildren()[j]
+            if child:IsA("TextButton") then
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+        for j = 1, 3 do
+            local child = SecondRow:GetChildren()[j]
+            if child:IsA("TextButton") then
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+    end)
+end
 
-local ViniLayout = Instance.new("Frame")
-ViniLayout.Size = UDim2.new(1, 0, 1, 0)
-ViniLayout.BackgroundTransparency = 1
-ViniLayout.Parent = ViniFrame
-
-local ViniImage = Instance.new("ImageLabel")
-ViniImage.Size = UDim2.new(0, 60, 0, 60)
-ViniImage.Position = UDim2.new(0, 10, 0.5, -30)
-ViniImage.BackgroundTransparency = 1
-ViniImage.Image = "rbxassetid://76303542908459"
-ViniImage.Parent = ViniLayout
-
-local ViniName = Instance.new("TextLabel")
-ViniName.Size = UDim2.new(0.6, 0, 0, 30)
-ViniName.Position = UDim2.new(0, 80, 0.5, -25)
-ViniName.BackgroundTransparency = 1
-ViniName.Text = "Vini.xits.script"
-ViniName.TextColor3 = Theme.Accent
-ViniName.Font = Enum.Font.GothamBlack
-ViniName.TextSize = 14
-ViniName.TextXAlignment = Enum.TextXAlignment.Left
-ViniName.Parent = ViniLayout
-
-local ViniBtn = Instance.new("TextButton")
-ViniBtn.Size = UDim2.new(0.3, -10, 0, 25)
-ViniBtn.Position = UDim2.new(0, 80, 0.5, 5)
-ViniBtn.BackgroundColor3 = Theme.Accent
-ViniBtn.Text = "Canal do YouTube"
-ViniBtn.TextColor3 = Color3.new(1, 1, 1)
-ViniBtn.Font = Enum.Font.GothamBold
-ViniBtn.TextSize = 11
-ViniBtn.Parent = ViniLayout
-AddCorner(ViniBtn, 4)
-
-ViniBtn.MouseButton1Click:Connect(function()
-    PlayClickSound()
-    CopyToClipboard("https://youtube.com/@vini.xits.script14?si=nySDYR4FDk-Rjq5y")
+CreateSection(TabSettings, "VISUAL SETTINGS")
+CreateToggle(TabSettings, "Instant Role Reveal", Config.InstantRole, function(v)
+    Config.InstantRole = v
+end)
+CreateToggle(TabSettings, "Anti Lag (Remove Shadows)", Config.AntiLag, function(v)
+    Config.AntiLag = v
+    if v then
+        Lighting.GlobalShadows = false
+        Lighting.ShadowSoftness = 0
+        Lighting.ShadowColor = Color3.new(0,0,0)
+    else
+        Lighting.GlobalShadows = true
+        Lighting.ShadowSoftness = 1
+    end
 end)
 
--- Frame para Thur.xits
-local ThurFrame = Instance.new("Frame")
-ThurFrame.Size = UDim2.new(1, -10, 0, 80)
-ThurFrame.Position = UDim2.new(0, 0, 0, 110)
-ThurFrame.BackgroundColor3 = Theme.ItemBG
-ThurFrame.Parent = TabCredits
-AddCorner(ThurFrame, 8)
+CreateSection(TabSettings, "CONFIGURATION")
 
-local ThurLayout = Instance.new("Frame")
-ThurLayout.Size = UDim2.new(1, 0, 1, 0)
-ThurLayout.BackgroundTransparency = 1
-ThurLayout.Parent = ThurFrame
+-- ==============================================================================
+-- SAVE SYSTEM & POSITIONS - CORRIGIDO PARA COINS REACH
+-- ==============================================================================
+local function SaveConfig(btnLabel, btnFrame)
+    if writefile then
+        -- Garantir que o tema atual esteja salvo
+        Config.CustomTheme = Config.CustomTheme or "Original"
+        
+        -- Salvar posições atuais das GUIs
+        Config.GuiPositions = {}
+        
+        if MainFrame and MainFrame.Visible then
+            Config.GuiPositions["MainFrame"] = {
+                MainFrame.Position.X.Scale,
+                MainFrame.Position.X.Offset,
+                MainFrame.Position.Y.Scale,
+                MainFrame.Position.Y.Offset
+            }
+        end
+        
+        if ToggleButton then
+            Config.GuiPositions["ToggleButton"] = {
+                ToggleButton.Position.X.Scale,
+                ToggleButton.Position.X.Offset,
+                ToggleButton.Position.Y.Scale,
+                ToggleButton.Position.Y.Offset
+            }
+        end
+        
+        if ShootButton then
+            Config.GuiPositions["ShootButton"] = {
+                ShootButton.Position.X.Scale,
+                ShootButton.Position.X.Offset,
+                ShootButton.Position.Y.Scale,
+                ShootButton.Position.Y.Offset
+            }
+        end
+        
+        if GrabFrame then
+            Config.GuiPositions["GrabFrame"] = {
+                GrabFrame.Position.X.Scale,
+                GrabFrame.Position.X.Offset,
+                GrabFrame.Position.Y.Scale,
+                GrabFrame.Position.Y.Offset
+            }
+        end
+        
+        if InvisFrame then
+            Config.GuiPositions["InvisFrame"] = {
+                InvisFrame.Position.X.Scale,
+                InvisFrame.Position.X.Offset,
+                InvisFrame.Position.Y.Scale,
+                InvisFrame.Position.Y.Offset
+            }
+        end
+        
+        -- Converter a tabela Config para JSON
+        local success, encoded = pcall(function()
+            return HttpService:JSONEncode(Config)
+        end)
+        
+        if success then
+            -- Escrever no arquivo
+            pcall(function()
+                writefile(ConfigFileName, encoded)
+            end)
+            
+            if btnLabel then
+                btnLabel.Text = "SAVED!"
+                btnLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+                
+                -- Aplicar tema imediatamente após salvar
+                ApplyThemeToGUI()
+                
+                task.delay(1, function()
+                    if btnLabel then
+                        btnLabel.Text = "SAVE CONFIGURATION"
+                        btnLabel.TextColor3 = Theme.Accent
+                    end
+                end)
+            else
+                NexusNotify("CONFIG", "Configuration saved! Gamepad: " .. tostring(Config.GamepadEnabled), 3)
+            end
+        else
+            if btnLabel then
+                btnLabel.Text = "ERROR!"
+                btnLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                task.delay(1, function()
+                    btnLabel.Text = "SAVE CONFIGURATION"
+                    btnLabel.TextColor3 = Theme.Accent
+                end)
+            end
+            NexusNotify("ERROR", "Failed to save configuration!", 3)
+        end
+    else
+        NexusNotify("ERROR", "writefile not available!", 3)
+    end
+end
 
-local ThurName = Instance.new("TextLabel")
-ThurName.Size = UDim2.new(0.8, 0, 0, 25)
-ThurName.Position = UDim2.new(0, 10, 0, 10)
-ThurName.BackgroundTransparency = 1
-ThurName.Text = "Thur.xits"
-ThurName.TextColor3 = Theme.Accent
-ThurName.Font = Enum.Font.GothamBlack
-ThurName.TextSize = 14
-ThurName.TextXAlignment = Enum.TextXAlignment.Left
-ThurName.Parent = ThurLayout
-
-local ThurThanks = Instance.new("TextLabel")
-ThurThanks.Size = UDim2.new(0.9, 0, 0, 40)
-ThurThanks.Position = UDim2.new(0, 10, 0, 35)
-ThurThanks.BackgroundTransparency = 1
-ThurThanks.Text = "Obrigado Thur.xits por ajudar a fazer algumas funções"
-ThurThanks.TextColor3 = Theme.TextDim
-ThurThanks.Font = Enum.Font.GothamSemibold
-ThurThanks.TextSize = 11
-ThurThanks.TextXAlignment = Enum.TextXAlignment.Left
-ThurThanks.TextWrapped = true
-ThurThanks.Parent = ThurLayout
-
--- Frame para Yudy.xits COM BOTÃO DO CANAL
-local YudyFrame = Instance.new("Frame")
-YudyFrame.Size = UDim2.new(1, -10, 0, 110) -- Aumentei a altura para caber o botão
-YudyFrame.Position = UDim2.new(0, 0, 0, 200)
-YudyFrame.BackgroundColor3 = Theme.ItemBG
-YudyFrame.Parent = TabCredits
-AddCorner(YudyFrame, 8)
-
-local YudyLayout = Instance.new("Frame")
-YudyLayout.Size = UDim2.new(1, 0, 1, 0)
-YudyLayout.BackgroundTransparency = 1
-YudyLayout.Parent = YudyFrame
-
-local YudyImage = Instance.new("ImageLabel")
-YudyImage.Size = UDim2.new(0, 60, 0, 60)
-YudyImage.Position = UDim2.new(0, 10, 0, 10) -- Ajuste da posição
-YudyImage.BackgroundTransparency = 1
-YudyImage.Image = "rbxassetid://108983272236186"
-YudyImage.Parent = YudyLayout
-
-local YudyName = Instance.new("TextLabel")
-YudyName.Size = UDim2.new(0.7, 0, 0, 30)
-YudyName.Position = UDim2.new(0, 80, 0, 10) -- Ajuste da posição
-YudyName.BackgroundTransparency = 1
-YudyName.Text = "Obrigado Yudy.xits pelo Apoio"
-YudyName.TextColor3 = Theme.Accent
-YudyName.Font = Enum.Font.GothamBlack
-YudyName.TextSize = 14
-YudyName.TextXAlignment = Enum.TextXAlignment.Left
-YudyName.TextWrapped = true
-YudyName.Parent = YudyLayout
-
--- Botão para o canal do Yudy.xits
-local YudyBtn = Instance.new("TextButton")
-YudyBtn.Size = UDim2.new(0.3, -10, 0, 25)
-YudyBtn.Position = UDim2.new(0, 80, 0, 45) -- Posição abaixo do nome
-YudyBtn.BackgroundColor3 = Theme.Accent
-YudyBtn.Text = "Canal do YouTube"
-YudyBtn.TextColor3 = Color3.new(1, 1, 1)
-YudyBtn.Font = Enum.Font.GothamBold
-YudyBtn.TextSize = 11
-YudyBtn.Parent = YudyLayout
-AddCorner(YudyBtn, 4)
-
-YudyBtn.MouseButton1Click:Connect(function()
-    PlayClickSound()
-    CopyToClipboard("https://youtube.com/@yudy.xits.oficial?si=AsGMtFMyo-1yg8EZ")
+-- Botão de salvar configuração
+CreateButton(TabSettings, "SAVE CONFIGURATION", function(btn, frame)
+    SaveConfig(btn, frame)
 end)
 
--- Frame para Seven
-local SevenFrame = Instance.new("Frame")
-SevenFrame.Size = UDim2.new(1, -10, 0, 100)
-SevenFrame.Position = UDim2.new(0, 0, 0, 320) -- Ajuste da posição (200 + 110 + 10)
-SevenFrame.BackgroundColor3 = Theme.ItemBG
-SevenFrame.Parent = TabCredits
-AddCorner(SevenFrame, 8)
+-- Botão de reset
+CreateButton(TabSettings, "RESET SETTINGS", function(btn, frame)
+    Config = DeepCopy(DefaultConfig)
+    Config.GuiPositions = {}
+    SetTheme("Original")
+    
+    if writefile then
+        pcall(function()
+            writefile(ConfigFileName, HttpService:JSONEncode(Config))
+        end)
+    end
+    
+    btn.Text = "RESET DONE!"
+    btn.TextColor3 = Color3.fromRGB(0, 255, 100)
+    
+    task.delay(1, function()
+        btn.Text = "RESET SETTINGS"
+        btn.TextColor3 = Theme.Accent
+        NexusNotify("RESET", "Settings reset!", 5)
+    end)
+end)
 
-local SevenLayout = Instance.new("Frame")
-SevenLayout.Size = UDim2.new(1, 0, 1, 0)
-SevenLayout.BackgroundTransparency = 1
-SevenLayout.Parent = SevenFrame
+-- ==============================================================================
+-- FUNÇÕES ADICIONAIS PARA BOTÕES
+-- ==============================================================================
+function ToggleInvis()
+    PlayClickSound()
+    InvisActive = not InvisActive
+    
+    if InvisActive then
+        InvisBtn.Text = "ACTIVE"
+        InvisBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
+        InvisStroke.Color = Color3.fromRGB(0, 255, 100)
+        
+        if LocalPlayer.Character then
+            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("BasePart") and v.Transparency == 0 then
+                    v.Transparency = 0.5
+                end
+            end
+        end
+    else
+        InvisBtn.Text = "INVISIBLE"
+        InvisBtn.TextColor3 = Theme.Ghost
+        InvisStroke.Color = Theme.Ghost
+        
+        if LocalPlayer.Character then
+            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("BasePart") and v.Transparency == 0.5 then
+                    v.Transparency = 0
+                end
+            end
+        end
+    end
+end
 
-local SevenImage = Instance.new("ImageLabel")
-SevenImage.Size = UDim2.new(0, 60, 0, 60)
-SevenImage.Position = UDim2.new(0, 10, 0.5, -30)
-SevenImage.BackgroundTransparency = 1
-SevenImage.Image = "rbxassetid://86810351938818"
-SevenImage.Parent = SevenLayout
+InvisBtn.MouseButton1Click:Connect(ToggleInvis)
 
-local SevenName = Instance.new("TextLabel")
-SevenName.Size = UDim2.new(0.7, 0, 0, 30)
-SevenName.Position = UDim2.new(0, 80, 0.5, -25)
-SevenName.BackgroundTransparency = 1
-SevenName.Text = "Obrigado Seven por ajudar com novas ideias"
-SevenName.TextColor3 = Theme.Accent
-SevenName.Font = Enum.Font.GothamBlack
-SevenName.TextSize = 14
-SevenName.TextXAlignment = Enum.TextXAlignment.Left
-SevenName.TextWrapped = true
-SevenName.Parent = SevenLayout
+RunService.Heartbeat:Connect(function()
+    if InvisActive then
+        local Char = LocalPlayer.Character
+        if Char then
+            local Root = Char:FindFirstChild("HumanoidRootPart")
+            local Hum = Char:FindFirstChild("Humanoid")
+            
+            if Root and Hum then
+                local oldCF = Root.CFrame
+                local oldCamOffset = Hum.CameraOffset
+                local invisCF = oldCF * CFrame.new(0, -200000, 0)
+                
+                Root.CFrame = invisCF
+                Hum.CameraOffset = invisCF:ToObjectSpace(CFrame.new(oldCF.Position)).Position
+                
+                RunService.RenderStepped:Wait()
+                
+                Root.CFrame = oldCF
+                Hum.CameraOffset = oldCamOffset
+            end
+        end
+    end
+end)
 
-CreateSection(TabCredits, "AGRADECIMENTOS ESPECIAIS")
+LocalPlayer.CharacterAdded:Connect(function()
+    InvisActive = false
+    InvisBtn.Text = "INVISIBLE"
+    InvisBtn.TextColor3 = Theme.Ghost
+    InvisStroke.Color = Theme.Ghost
+    
+    -- Se estava farmando e morreu, parar farm
+    if Config.AutoFarmCoins then
+        autoFarmCoinsRunning = false
+        Config.AutoFarmCoins = false
+        
+        if autoFarmCoinsThread then
+            task.cancel(autoFarmCoinsThread)
+            autoFarmCoinsThread = nil
+        end
+    end
+end)
 
--- Linha separadora
-local Separator = Instance.new("Frame")
-Separator.Size = UDim2.new(1, -20, 0, 1)
-Separator.Position = UDim2.new(0, 10, 0, 430) -- Ajuste da posição (320 + 100 + 10)
-Separator.BackgroundColor3 = Theme.Accent
-Separator.BackgroundTransparency = 0.5
-Separator.Parent = TabCredits
+task.spawn(function()
+    while true do
+        if GrabFrame and GrabFrame.Visible then
+            local t1 = TweenService:Create(GrabStroke, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Transparency = 0.4})
+            t1:Play()
+            t1.Completed:Wait()
+            
+            local t2 = TweenService:Create(GrabStroke, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Transparency = 0})
+            t2:Play()
+            t2.Completed:Wait()
+        else
+            task.wait(1)
+        end
+    end
+end)
 
--- Texto adicional que você pediu
-local FinalThanksLabel = Instance.new("TextLabel")
-FinalThanksLabel.Size = UDim2.new(1, -10, 0, 40)
-FinalThanksLabel.Position = UDim2.new(0, 0, 0, 440) -- Ajuste da posição (430 + 10)
-FinalThanksLabel.BackgroundTransparency = 1
-FinalThanksLabel.Text = "E também obrigado a todos que usam o Nexus Hub ❤"
-FinalThanksLabel.TextColor3 = Color3.fromRGB(255, 105, 180) -- Cor rosa para destaque
-FinalThanksLabel.Font = Enum.Font.GothamBold
-FinalThanksLabel.TextSize = 13
-FinalThanksLabel.TextWrapped = true
-FinalThanksLabel.TextYAlignment = Enum.TextYAlignment.Top
-FinalThanksLabel.Parent = TabCredits
+task.spawn(function()
+    while true do
+        if InvisFrame and InvisFrame.Visible and not InvisActive then
+            local t1 = TweenService:Create(InvisStroke, TweenInfo.new(1, Enum.EasingStyle.Sine), {Transparency = 0.4})
+            t1:Play()
+            t1.Completed:Wait()
+            
+            local t2 = TweenService:Create(InvisStroke, TweenInfo.new(1, Enum.EasingStyle.Sine), {Transparency = 0})
+            t2:Play()
+            t2.Completed:Wait()
+        elseif InvisActive then
+            InvisStroke.Transparency = 0
+            task.wait(0.5)
+        else
+            task.wait(1)
+        end
+    end
+end)
 
-local ThanksLabel = Instance.new("TextLabel")
-ThanksLabel.Size = UDim2.new(1, -10, 0, 60)
-ThanksLabel.Position = UDim2.new(0, 0, 0, 490) -- Ajuste da posição (440 + 40 + 10)
-ThanksLabel.BackgroundTransparency = 1
-ThanksLabel.Text = "Obrigado por usar o Nexus Hub MM2!\nSe divirta 😋"
-ThanksLabel.TextColor3 = Theme.TextDim
-ThanksLabel.Font = Enum.Font.GothamSemibold
-ThanksLabel.TextSize = 12
-ThanksLabel.TextWrapped = true
-ThanksLabel.TextYAlignment = Enum.TextYAlignment.Top
-ThanksLabel.Parent = TabCredits
+-- ==============================================================================
+-- FUNÇÃO PARA CARREGAR POSIÇÕES
+-- ==============================================================================
+local function LoadGuiPositions()
+    if Config.GuiPositions then
+        -- Função auxiliar para definir posição
+        local function SetPos(uiObj, name)
+            if uiObj and Config.GuiPositions[name] then
+                local p = Config.GuiPositions[name]
+                if #p >= 4 then
+                    uiObj.Position = UDim2.new(p[1], p[2], p[3], p[4])
+                end
+            end
+        end
+        
+        -- Carregar posição do MainFrame
+        SetPos(MainFrame, "MainFrame")
+        
+        -- Carregar posição do ToggleButton
+        SetPos(ToggleButton, "ToggleButton")
+        
+        -- Carregar posição do ShootButton
+        SetPos(ShootButton, "ShootButton")
+        
+        -- Carregar posição do GrabFrame
+        SetPos(GrabFrame, "GrabFrame")
+        
+        -- Carregar posição do InvisFrame
+        SetPos(InvisFrame, "InvisFrame")
+    end
+end
 
 -- ==============================================================================
 -- FUNÇÕES PARA TEMA CUSTOMIZADO
@@ -2173,17 +2956,6 @@ local function ApplyThemeToGUI()
             end
         end
     end
-    
-    -- Atualizar botões de YouTube na aba CRÉDITOS
-    if ViniBtn then
-        ViniBtn.BackgroundColor3 = Theme.Accent
-        ViniBtn.TextColor3 = Color3.new(1, 1, 1)
-    end
-    
-    if YudyBtn then
-        YudyBtn.BackgroundColor3 = Theme.Accent
-        YudyBtn.TextColor3 = Color3.new(1, 1, 1)
-    end
 end
 
 local function SetTheme(themeName)
@@ -2195,366 +2967,6 @@ local function SetTheme(themeName)
         return true
     end
     return false
-end
-
--- ==============================================================================
--- TAB SETTINGS COM CUSTOM THEME
--- ==============================================================================
-local TabSettings = CreateTab("SETTINGS")
-
-CreateSection(TabSettings, "CUSTOM THEME")
-
-local themeNames = {"Original", "Red", "Blue", "Verde", "Purple", "Yellow"}
-
-FirstRow = Instance.new("Frame")
-FirstRow.Size = UDim2.new(1, -10, 0, 32)
-FirstRow.BackgroundTransparency = 1
-FirstRow.Parent = TabSettings
-
-for i = 1, 3 do
-    local themeName = themeNames[i]
-    local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(0.32, -5, 1, 0)
-    Btn.Position = UDim2.new((i-1) * 0.33, 0, 0, 0)
-    Btn.BackgroundColor3 = Theme.ItemBG
-    Btn.Text = themeName
-    Btn.TextColor3 = Config.CustomTheme == themeName and Theme.Accent or Theme.TextDim
-    Btn.Font = Enum.Font.GothamBold
-    Btn.TextSize = 11
-    Btn.Parent = FirstRow
-    AddCorner(Btn, 4)
-    
-    Btn.MouseButton1Click:Connect(function()
-        PlayClickSound()
-        SetTheme(themeName)
-        for j = 1, 3 do
-            local child = FirstRow:GetChildren()[j]
-            if child:IsA("TextButton") then
-                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
-            end
-        end
-        for j = 1, 3 do
-            local child = SecondRow:GetChildren()[j]
-            if child:IsA("TextButton") then
-                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
-            end
-        end
-    end)
-end
-
-SecondRow = Instance.new("Frame")
-SecondRow.Size = UDim2.new(1, -10, 0, 32)
-SecondRow.Position = UDim2.new(0, 0, 0, 38)
-SecondRow.BackgroundTransparency = 1
-SecondRow.Parent = TabSettings
-
-for i = 4, 6 do
-    local themeName = themeNames[i]
-    local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(0.32, -5, 1, 0)
-    Btn.Position = UDim2.new((i-4) * 0.33, 0, 0, 0)
-    Btn.BackgroundColor3 = Theme.ItemBG
-    Btn.Text = themeName
-    Btn.TextColor3 = Config.CustomTheme == themeName and Theme.Accent or Theme.TextDim
-    Btn.Font = Enum.Font.GothamBold
-    Btn.TextSize = 11
-    Btn.Parent = SecondRow
-    AddCorner(Btn, 4)
-    
-    Btn.MouseButton1Click:Connect(function()
-        PlayClickSound()
-        SetTheme(themeName)
-        for j = 1, 3 do
-            local child = FirstRow:GetChildren()[j]
-            if child:IsA("TextButton") then
-                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
-            end
-        end
-        for j = 1, 3 do
-            local child = SecondRow:GetChildren()[j]
-            if child:IsA("TextButton") then
-                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
-            end
-        end
-    end)
-end
-
-CreateSection(TabSettings, "VISUAL SETTINGS")
-CreateToggle(TabSettings, "Instant Role Reveal", Config.InstantRole, function(v)
-    Config.InstantRole = v
-end)
-CreateToggle(TabSettings, "Anti Lag (Remove Shadows)", Config.AntiLag, function(v)
-    Config.AntiLag = v
-    if v then
-        Lighting.GlobalShadows = false
-        Lighting.ShadowSoftness = 0
-        Lighting.ShadowColor = Color3.new(0,0,0)
-    else
-        Lighting.GlobalShadows = true
-        Lighting.ShadowSoftness = 1
-    end
-end)
-
-CreateSection(TabSettings, "CONFIGURATION")
-
--- ==============================================================================
--- SAVE SYSTEM & POSITIONS
--- ==============================================================================
-local function SaveConfig(btnLabel, btnFrame)
-    if writefile then
-        -- Garantir que o tema atual esteja salvo
-        Config.CustomTheme = Config.CustomTheme or "Original"
-        
-        -- Salvar posições atuais das GUIs
-        Config.GuiPositions = {}
-        
-        if MainFrame and MainFrame.Visible then
-            Config.GuiPositions["MainFrame"] = {
-                MainFrame.Position.X.Scale,
-                MainFrame.Position.X.Offset,
-                MainFrame.Position.Y.Scale,
-                MainFrame.Position.Y.Offset
-            }
-        end
-        
-        if ToggleButton then
-            Config.GuiPositions["ToggleButton"] = {
-                ToggleButton.Position.X.Scale,
-                ToggleButton.Position.X.Offset,
-                ToggleButton.Position.Y.Scale,
-                ToggleButton.Position.Y.Offset
-            }
-        end
-        
-        if ShootButton then
-            Config.GuiPositions["ShootButton"] = {
-                ShootButton.Position.X.Scale,
-                ShootButton.Position.X.Offset,
-                ShootButton.Position.Y.Scale,
-                ShootButton.Position.Y.Offset
-            }
-        end
-        
-        if GrabFrame then
-            Config.GuiPositions["GrabFrame"] = {
-                GrabFrame.Position.X.Scale,
-                GrabFrame.Position.X.Offset,
-                GrabFrame.Position.Y.Scale,
-                GrabFrame.Position.Y.Offset
-            }
-        end
-        
-        if InvisFrame then
-            Config.GuiPositions["InvisFrame"] = {
-                InvisFrame.Position.X.Scale,
-                InvisFrame.Position.X.Offset,
-                InvisFrame.Position.Y.Scale,
-                InvisFrame.Position.Y.Offset
-            }
-        end
-        
-        -- Converter a tabela Config para JSON
-        local success, encoded = pcall(function()
-            return HttpService:JSONEncode(Config)
-        end)
-        
-        if success then
-            -- Escrever no arquivo
-            pcall(function()
-                writefile(ConfigFileName, encoded)
-            end)
-            
-            if btnLabel then
-                btnLabel.Text = "SAVED!"
-                btnLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-                
-                -- Aplicar tema imediatamente após salvar
-                ApplyThemeToGUI()
-                
-                task.delay(1, function()
-                    if btnLabel then
-                        btnLabel.Text = "SAVE CONFIGURATION"
-                        btnLabel.TextColor3 = Theme.Accent
-                    end
-                end)
-            else
-                NexusNotify("CONFIG", "Configuration saved!", 3)
-            end
-        else
-            if btnLabel then
-                btnLabel.Text = "ERROR!"
-                btnLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-                task.delay(1, function()
-                    btnLabel.Text = "SAVE CONFIGURATION"
-                    btnLabel.TextColor3 = Theme.Accent
-                end)
-            end
-            NexusNotify("ERROR", "Failed to save configuration!", 3)
-        end
-    else
-        NexusNotify("ERROR", "writefile not available!", 3)
-    end
-end
-
--- Botão de salvar configuração
-CreateButton(TabSettings, "SAVE CONFIGURATION", function(btn, frame)
-    SaveConfig(btn, frame)
-end)
-
--- Botão de reset
-CreateButton(TabSettings, "RESET SETTINGS", function(btn, frame)
-    Config = DeepCopy(DefaultConfig)
-    Config.GuiPositions = {}
-    SetTheme("Original")
-    
-    if writefile then
-        pcall(function()
-            writefile(ConfigFileName, HttpService:JSONEncode(Config))
-        end)
-    end
-    
-    btn.Text = "RESET DONE!"
-    btn.TextColor3 = Color3.fromRGB(0, 255, 100)
-    
-    task.delay(1, function()
-        btn.Text = "RESET SETTINGS"
-        btn.TextColor3 = Theme.Accent
-        NexusNotify("RESET", "Settings reset!", 5)
-    end)
-end)
-
--- ==============================================================================
--- FUNÇÕES ADICIONAIS PARA BOTÕES
--- ==============================================================================
-local function ToggleInvis()
-    PlayClickSound()
-    InvisActive = not InvisActive
-    
-    if InvisActive then
-        InvisBtn.Text = "ACTIVE"
-        InvisBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
-        InvisStroke.Color = Color3.fromRGB(0, 255, 100)
-        
-        if LocalPlayer.Character then
-            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
-                if v:IsA("BasePart") and v.Transparency == 0 then
-                    v.Transparency = 0.5
-                end
-            end
-        end
-    else
-        InvisBtn.Text = "INVISIBLE"
-        InvisBtn.TextColor3 = Theme.Ghost
-        InvisStroke.Color = Theme.Ghost
-        
-        if LocalPlayer.Character then
-            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
-                if v:IsA("BasePart") and v.Transparency == 0.5 then
-                    v.Transparency = 0
-                end
-            end
-        end
-    end
-end
-
-InvisBtn.MouseButton1Click:Connect(ToggleInvis)
-
-RunService.Heartbeat:Connect(function()
-    if InvisActive then
-        local Char = LocalPlayer.Character
-        if Char then
-            local Root = Char:FindFirstChild("HumanoidRootPart")
-            local Hum = Char:FindFirstChild("Humanoid")
-            
-            if Root and Hum then
-                local oldCF = Root.CFrame
-                local oldCamOffset = Hum.CameraOffset
-                local invisCF = oldCF * CFrame.new(0, -200000, 0)
-                
-                Root.CFrame = invisCF
-                Hum.CameraOffset = invisCF:ToObjectSpace(CFrame.new(oldCF.Position)).Position
-                
-                RunService.RenderStepped:Wait()
-                
-                Root.CFrame = oldCF
-                Hum.CameraOffset = oldCamOffset
-            end
-        end
-    end
-end)
-
-LocalPlayer.CharacterAdded:Connect(function()
-    InvisActive = false
-    InvisBtn.Text = "INVISIBLE"
-    InvisBtn.TextColor3 = Theme.Ghost
-    InvisStroke.Color = Theme.Ghost
-end)
-
-task.spawn(function()
-    while true do
-        if GrabFrame and GrabFrame.Visible then
-            local t1 = TweenService:Create(GrabStroke, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Transparency = 0.4})
-            t1:Play()
-            t1.Completed:Wait()
-            
-            local t2 = TweenService:Create(GrabStroke, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Transparency = 0})
-            t2:Play()
-            t2.Completed:Wait()
-        else
-            task.wait(1)
-        end
-    end
-end)
-
-task.spawn(function()
-    while true do
-        if InvisFrame and InvisFrame.Visible and not InvisActive then
-            local t1 = TweenService:Create(InvisStroke, TweenInfo.new(1, Enum.EasingStyle.Sine), {Transparency = 0.4})
-            t1:Play()
-            t1.Completed:Wait()
-            
-            local t2 = TweenService:Create(InvisStroke, TweenInfo.new(1, Enum.EasingStyle.Sine), {Transparency = 0})
-            t2:Play()
-            t2.Completed:Wait()
-        elseif InvisActive then
-            InvisStroke.Transparency = 0
-            task.wait(0.5)
-        else
-            task.wait(1)
-        end
-    end
-end)
-
--- ==============================================================================
--- FUNÇÃO PARA CARREGAR POSIÇÕES
--- ==============================================================================
-local function LoadGuiPositions()
-    if Config.GuiPositions then
-        -- Função auxiliar para definir posição
-        local function SetPos(uiObj, name)
-            if uiObj and Config.GuiPositions[name] then
-                local p = Config.GuiPositions[name]
-                if #p >= 4 then
-                    uiObj.Position = UDim2.new(p[1], p[2], p[3], p[4])
-                end
-            end
-        end
-        
-        -- Carregar posição do MainFrame
-        SetPos(MainFrame, "MainFrame")
-        
-        -- Carregar posição do ToggleButton
-        SetPos(ToggleButton, "ToggleButton")
-        
-        -- Carregar posição do ShootButton
-        SetPos(ShootButton, "ShootButton")
-        
-        -- Carregar posição do GrabFrame
-        SetPos(GrabFrame, "GrabFrame")
-        
-        -- Carregar posição do InvisFrame
-        SetPos(InvisFrame, "InvisFrame")
-    end
 end
 
 -- ==============================================================================
@@ -2582,6 +2994,34 @@ ApplyThemeToGUI()
 task.wait(0.1) -- Pequeno delay para garantir que tudo foi criado
 LoadGuiPositions()
 
+-- Aplicar Coins Reach se estiver ativado
+if Config.CoinsReach then
+    -- Ativar Coins Reach
+    coinOrig = {}
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj.Name == "Coin_Server" and obj:IsA("BasePart") then
+            if not coinOrig[obj] then
+                coinOrig[obj] = obj.Size
+            end
+            obj.Size = coinOrig[obj] * 4
+        end
+    end
+    
+    coinReachConn = Workspace.DescendantAdded:Connect(function(obj)
+        if obj.Name == "Coin_Server" and obj:IsA("BasePart") then
+            if not coinOrig[obj] then
+                coinOrig[obj] = obj.Size
+            end
+            obj.Size = coinOrig[obj] * 4
+        end
+    end)
+    
+    NexusNotify("COINS REACH", "Auto-enabled from saved config", 3)
+end
+
+-- Configurar controles de gamepad
+SetupGamepadControls()
+
 -- Verificar e aplicar posições novamente após um delay
 task.spawn(function()
     task.wait(0.5)
@@ -2596,17 +3036,16 @@ task.spawn(function()
     ApplyThemeToGUI()
 end)
 
--- NOTIFICAÇÃO INICIAL CORRIGIDA
-task.wait(1) -- Pequeno delay para garantir que tudo foi carregado
+-- NOTIFICAÇÃO INICIAL
+task.wait(1)
 NexusNotify("NEXUS HUB MM2",
     "✅ Script carregado com sucesso!\n\n" ..
-    "🔄 Novidades nesta versão:\n" ..
-    "• Sistema de Fling\n" ..
-    "• Temas customizados corrigidos\n" ..
-    "• Sistema de save funcionando\n" ..
-    "• Posições das GUIs salvas\n" ..
-    "• Botão Grab Gun corrigido\n" ..
-    "• LeadShot funcionando\n" ..
-    "• Nova aba CRÉDITOS\n" ..
-    "• Silient 99.9% de acerto\n\n" ..
-    "📌 Script 100% Atualizado", 8)
+    "🔄 Problemas corrigidos:\n" ..
+    "• Grab Gun Gamepad FUNCIONANDO\n" ..
+    "• Botão RT fixo (auto-fire)\n" ..
+    "• Sistema de detecção contínua\n" ..
+    "• Busca melhorada por GunDrop\n" ..
+    "• Dispara imediatamente + contínuo\n" ..
+    "• Notificações de sucesso/falha\n\n" ..
+    "📌 Gamepad: RT = DISPARO DIRETO!\n" ..
+    "📌 Gamepad: B = GRAB GUN FUNCIONA!", 10)
