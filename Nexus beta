@@ -58,6 +58,10 @@ local DefaultConfig = {
     -- GHOST MODE
     ShowInvisBtn = false,
     
+    -- DESYNC (NOVO)
+    DesyncEnabled = false,
+    ShowDesyncBtn = false,
+    
     -- ESP
     Murder_Fill = false, Murder_Outline = false, Murder_Tracer = false, Murder_Name = false, Murder_Dist = false,
     Sheriff_Fill = false, Sheriff_Outline = false, Sheriff_Tracer = false, Sheriff_Name = false, Sheriff_Dist = false,
@@ -81,6 +85,10 @@ local DefaultConfig = {
     -- AUTO FARM
     CoinsReach = false,
     AutoFarmCoins = false,
+    
+    -- COINS
+    CoinsRemove = false,
+    OptimizerCoins = false,
     
     -- CUSTOM THEME
     CustomTheme = "Original", -- "Original", "Red", "Blue", "Verde", "Purple", "Yellow"
@@ -217,7 +225,14 @@ local RoleColors = {
     Gun = Color3.fromRGB(255, 255, 255)
 }
 
-local Theme = Themes[Config.CustomTheme] or Themes.Original
+-- Garantir que o tema seja carregado corretamente
+local Theme
+if Config.CustomTheme and Themes[Config.CustomTheme] then
+    Theme = Themes[Config.CustomTheme]
+else
+    Config.CustomTheme = "Original"
+    Theme = Themes.Original
+end
 
 local foundGunDrop = nil
 local RoleCache = {} 
@@ -225,8 +240,14 @@ local tabs = {}
 local lastMyRole = "FORCE_RESET" 
 local rolesNotified = false
 local playerDataRemote = nil
-local ShootGui, GrabFrame, InvisFrame, ToggleButton, MainFrame, ShootButton
+local ShootGui, GrabFrame, InvisFrame, DesyncFrame, ToggleButton, MainFrame, ShootButton
 local InvisActive = false
+
+-- Variáveis para DESYNC
+local desync_on = false
+local ghostPart = nil
+local desyncChair = nil
+local desyncWeld = nil
 
 -- Variáveis para Fling com Giro
 local movel = 0.1
@@ -242,6 +263,10 @@ local coinOrig = {}
 local coinReachConn = nil
 local autoFarmCoinsRunning = false
 local autoFarmCoinsThread = nil
+
+-- Variáveis para COINS
+local coinsRemoveConn = nil
+local optimizerCoinsConn = nil
 
 -- Variáveis para Gamepad - CORRIGIDAS
 local gamepadConnections = {}
@@ -274,6 +299,7 @@ if _G.NexusHubLoaded then
     if CoreGui:FindFirstChild("NexusNotifyContainer") then CoreGui.NexusNotifyContainer:Destroy() end
     if CoreGui:FindFirstChild("NexusGrabGunBtn") then CoreGui.NexusGrabGunBtn:Destroy() end
     if CoreGui:FindFirstChild("NexusInvisBtn") then CoreGui.NexusInvisBtn:Destroy() end
+    if CoreGui:FindFirstChild("NexusDesyncBtn") then CoreGui.NexusDesyncBtn:Destroy() end
 end
 _G.NexusHubLoaded = true
 
@@ -420,6 +446,179 @@ local function MakeDraggable(frame, trigger)
             frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end 
     end)
+end
+
+-- ==============================================================================
+-- FUNÇÕES PARA TEMA CUSTOMIZADO
+-- ==============================================================================
+local function ApplyThemeToGUI()
+    -- Atualizar ToggleButton
+    if ToggleButton then
+        ToggleButton.BackgroundColor3 = Theme.Background
+        ToggleButton.TextColor3 = Theme.Accent
+        local toggleStroke = ToggleButton:FindFirstChildOfClass("UIStroke")
+        if toggleStroke then
+            toggleStroke.Color = Theme.Accent
+        end
+    end
+    
+    -- Atualizar MainFrame
+    if MainFrame then
+        MainFrame.BackgroundColor3 = Theme.Background
+        local mainStroke = MainFrame:FindFirstChildOfClass("UIStroke")
+        if mainStroke then
+            mainStroke.Color = Theme.Accent
+        end
+    end
+    
+    -- Atualizar Sidebar
+    if Sidebar then
+        Sidebar.BackgroundColor3 = Theme.Sidebar
+    end
+    
+    -- Atualizar TitleLabel (título da GUI)
+    if TitleLabel then
+        TitleLabel.TextColor3 = Theme.Accent
+    end
+    
+    -- Atualizar botões das abas
+    for _, tab in ipairs(tabs) do
+        if tab.Btn then
+            tab.Btn.BackgroundColor3 = Theme.Background
+            tab.Btn.TextColor3 = Theme.TextDim
+            if tab.Frame and tab.Frame.Visible then
+                tab.Btn.BackgroundColor3 = Theme.AccentDark
+                tab.Btn.TextColor3 = Theme.Text
+            end
+        end
+    end
+    
+    -- Atualizar ShootButton
+    if ShootButton then
+        ShootButton.BackgroundColor3 = Theme.Background
+        ShootButton.TextColor3 = Theme.Accent
+        local shootStroke = ShootButton:FindFirstChildOfClass("UIStroke")
+        if shootStroke then
+            shootStroke.Color = Theme.Accent
+            local gradient = shootStroke:FindFirstChildOfClass("UIGradient")
+            if gradient then
+                gradient.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0.00, Theme.Accent),
+                    ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1.00, Theme.Accent)
+                }
+            end
+        end
+    end
+    
+    -- Atualizar GrabFrame
+    if GrabFrame then
+        GrabFrame.BackgroundColor3 = Theme.Background
+        local grabStroke = GrabFrame:FindFirstChildOfClass("UIStroke")
+        if grabStroke then
+            grabStroke.Color = Theme.Accent
+        end
+    end
+    
+    if GrabBtn then
+        GrabBtn.TextColor3 = Theme.Accent
+    end
+    
+    -- Atualizar InvisFrame
+    if InvisFrame then
+        InvisFrame.BackgroundColor3 = Theme.Background
+        local invisStroke = InvisFrame:FindFirstChildOfClass("UIStroke")
+        if invisStroke then
+            invisStroke.Color = Theme.Ghost
+        end
+    end
+    
+    if InvisBtn then
+        InvisBtn.TextColor3 = Theme.Ghost
+    end
+    
+    -- Atualizar DesyncFrame
+    if DesyncFrame then
+        DesyncFrame.BackgroundColor3 = Theme.Background
+        local desyncStroke = DesyncFrame:FindFirstChildOfClass("UIStroke")
+        if desyncStroke then
+            if desync_on then
+                desyncStroke.Color = Color3.fromRGB(0, 255, 150)
+            else
+                desyncStroke.Color = Theme.Ghost
+            end
+        end
+    end
+    
+    if DesyncBtn then
+        if desync_on then
+            DesyncBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+        else
+            DesyncBtn.TextColor3 = Theme.Ghost
+        end
+    end
+    
+    -- Atualizar notificações e outros elementos
+    if NotifyContainer then
+        for _, notify in ipairs(NotifyContainer:GetDescendants()) do
+            if notify:IsA("TextLabel") and notify.Text == "NEXUS MM2" then
+                notify.TextColor3 = Theme.Accent
+            elseif notify:IsA("Frame") and notify:FindFirstChildOfClass("UIStroke") then
+                notify.BackgroundColor3 = Theme.Sidebar
+                local stroke = notify:FindFirstChildOfClass("UIStroke")
+                if stroke then
+                    stroke.Color = Theme.Accent
+                end
+            end
+        end
+    end
+    
+    -- Atualizar botões de tema (na aba SETTINGS)
+    if FirstRow then
+        for _, child in ipairs(FirstRow:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BackgroundColor3 = Theme.ItemBG
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+    end
+    
+    if SecondRow then
+        for _, child in ipairs(SecondRow:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BackgroundColor3 = Theme.ItemBG
+                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
+            end
+        end
+    end
+    
+    -- Atualizar o marcador visual (ghost) se existir
+    if ghostPart then
+        local ghostColor = Theme.Ghost
+        ghostPart.Color = ghostColor
+        local highlight = ghostPart:FindFirstChildOfClass("Highlight")
+        if highlight then
+            highlight.FillColor = ghostColor
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        end
+        local bbGui = ghostPart:FindFirstChildOfClass("BillboardGui")
+        if bbGui then
+            local txt = bbGui:FindFirstChildOfClass("TextLabel")
+            if txt then
+                txt.TextColor3 = ghostColor
+            end
+        end
+    end
+end
+
+local function SetTheme(themeName)
+    if Themes[themeName] then
+        Theme = Themes[themeName]
+        Config.CustomTheme = themeName
+        ApplyThemeToGUI()
+        return true
+    end
+    return false
 end
 
 -- ==============================================================================
@@ -619,7 +818,6 @@ local function PerformGrabGun()
         gunDrop.CanCollide = false
         gunDrop.CFrame = Root.CFrame + Vector3.new(0, 0, -2) -- Coloca na frente do jogador
         gunDrop.Velocity = Vector3.new(0,0,0)
-        NexusNotify("GRAB", "Gun Teleported!", 1)
         
         if GrabBtn then
             GrabBtn.Text = "SUCCESS"
@@ -641,7 +839,6 @@ local function PerformGrabGun()
         end
         return true
     else
-        NexusNotify("INFO", "No gun on map yet.", 1)
         return false
     end
 end
@@ -672,10 +869,7 @@ local function SetupGamepadControls()
                     
                     -- Dispara imediatamente quando RT é pressionado
                     if Config.SilentAim then
-                        local success = PerformSilentAimDirectly()
-                        if success then
-                            NexusNotify("SILENT AIM", "Fired at Murderer!", 1)
-                        end
+                        PerformSilentAimDirectly()
                     end
                 end
             end)
@@ -722,7 +916,7 @@ local function SetupGamepadControls()
                     
                     -- Dispara a cada 0.3 segundos enquanto RT está pressionado
                     if rtHoldDuration > 0.3 then
-                        local success = PerformSilentAimDirectly()
+                        PerformSilentAimDirectly()
                         lastRTInputTime = currentTime
                     end
                 end
@@ -730,18 +924,123 @@ local function SetupGamepadControls()
             end
         end)
         
-        -- Mostrar notificação
-        NexusNotify("GAMEPAD", "Controles habilitados!\nRT: Silent Aim (Auto-fire)\nY: Invisible\nB: Grab Gun", 5)
         gamepadActive = true
     else
         gamepadActive = false
         isRTPressed = false
-        NexusNotify("GAMEPAD", "Controles desabilitados", 3)
     end
 end
 
 -- ==============================================================================
--- BOTÕES FLUTUANTES (GRAB GUN E INVISIBLE) - COM TRANSPARÊNCIA
+-- FUNÇÕES PARA COINS REMOVE E OPTIMIZER COINS
+-- ==============================================================================
+local function ApplyCoinsRemove(state)
+    if state then
+        -- Destruir todos os Coin_Server e seus CoinVisuals existentes
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj.Name == "Coin_Server" and obj:IsA("BasePart") then
+                -- Destruir o CoinVisual se existir
+                local coinVisual = obj:FindFirstChild("CoinVisual")
+                if coinVisual then
+                    coinVisual:Destroy()
+                end
+                -- Destruir a própria parte Coin_Server
+                obj:Destroy()
+            end
+        end
+        
+        -- Conectar para destruir novos Coin_Server que forem adicionados
+        coinsRemoveConn = Workspace.DescendantAdded:Connect(function(obj)
+            if obj.Name == "Coin_Server" and obj:IsA("BasePart") then
+                -- Pequeno delay para garantir que o CoinVisual foi criado
+                task.wait(0.1)
+                
+                -- Destruir o CoinVisual se existir
+                local coinVisual = obj:FindFirstChild("CoinVisual")
+                if coinVisual then
+                    coinVisual:Destroy()
+                end
+                -- Destruir a própria parte Coin_Server
+                obj:Destroy()
+            end
+        end)
+    else
+        -- Desconectar o evento
+        if coinsRemoveConn then
+            coinsRemoveConn:Disconnect()
+            coinsRemoveConn = nil
+        end
+        
+        -- Não podemos restaurar as moedas destruídas, então apenas paramos de destruir novas.
+        -- O jogo vai recriar as moedas normalmente quando novas rodadas começarem.
+    end
+end
+
+local function ApplyOptimizerCoins(state)
+    if state then
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj.Name == "Coin_Server" and obj:IsA("BasePart") then
+                -- Pular se a moeda foi destruída pelo Coins Remove
+                if not obj.Parent then continue end
+                
+                obj.Material = Enum.Material.Plastic
+                obj.Color = Color3.fromRGB(255, 255, 0)
+                if obj:FindFirstChildOfClass("ParticleEmitter") then
+                    for _, emitter in ipairs(obj:GetChildren()) do
+                        if emitter:IsA("ParticleEmitter") then
+                            emitter.Enabled = false
+                        end
+                    end
+                end
+            end
+        end
+        
+        optimizerCoinsConn = Workspace.DescendantAdded:Connect(function(obj)
+            if obj.Name == "Coin_Server" and obj:IsA("BasePart") then
+                -- Pequeno delay para garantir que o objeto está totalmente carregado
+                task.wait(0.1)
+                
+                -- Pular se a moeda foi destruída pelo Coins Remove
+                if not obj.Parent then return end
+                
+                obj.Material = Enum.Material.Plastic
+                obj.Color = Color3.fromRGB(255, 255, 0)
+                if obj:FindFirstChildOfClass("ParticleEmitter") then
+                    for _, emitter in ipairs(obj:GetChildren()) do
+                        if emitter:IsA("ParticleEmitter") then
+                            emitter.Enabled = false
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if optimizerCoinsConn then
+            optimizerCoinsConn:Disconnect()
+            optimizerCoinsConn = nil
+        end
+        
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj.Name == "Coin_Server" and obj:IsA("BasePart") then
+                -- Pular se a moeda foi destruída pelo Coins Remove
+                if not obj.Parent then continue end
+                
+                obj.Material = Enum.Material.Neon
+                obj.Color = Color3.fromRGB(255, 215, 0)
+                if obj:FindFirstChildOfClass("ParticleEmitter") then
+                    for _, emitter in ipairs(obj:GetChildren()) do
+                        if emitter:IsA("ParticleEmitter") then
+                            emitter.Enabled = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- ==============================================================================
+-- BOTÕES FLUTUANTES (GRAB GUN, INVISIBLE E DESYNC) - COM TRANSPARÊNCIA
 -- ==============================================================================
 local GrabGunGui = Instance.new("ScreenGui")
 GrabGunGui.Name = "NexusGrabGunBtn"
@@ -807,6 +1106,38 @@ InvisBtn.AutoButtonColor = true
 MakeDraggableCornersOnly(InvisFrame)
 
 -- ==============================================================================
+-- BOTÃO FLUTUANTE DESYNC - COM TRANSPARÊNCIA
+-- ==============================================================================
+local DesyncGui = Instance.new("ScreenGui")
+DesyncGui.Name = "NexusDesyncBtn"
+DesyncGui.Parent = CoreGui
+DesyncGui.IgnoreGuiInset = true
+DesyncGui.ResetOnSpawn = false
+
+DesyncFrame = Instance.new("Frame")
+DesyncFrame.Parent = DesyncGui
+DesyncFrame.Size = UDim2.new(0, 80, 0, 30)
+DesyncFrame.Position = UDim2.new(0.7, 0, 0.7, 0)
+DesyncFrame.BackgroundColor3 = Theme.Background
+DesyncFrame.BackgroundTransparency = 0.5
+DesyncFrame.Visible = false
+DesyncFrame.BorderSizePixel = 0
+AddCorner(DesyncFrame, 6)
+local DesyncStroke = AddStroke(DesyncFrame, Theme.Ghost, 1.5)
+
+local DesyncBtn = Instance.new("TextButton")
+DesyncBtn.Parent = DesyncFrame
+DesyncBtn.Size = UDim2.new(1, 0, 1, 0)
+DesyncBtn.BackgroundTransparency = 1
+DesyncBtn.Text = "DESYNC"
+DesyncBtn.TextColor3 = Theme.Ghost
+DesyncBtn.Font = Enum.Font.GothamBlack
+DesyncBtn.TextSize = 11
+DesyncBtn.AutoButtonColor = true
+-- Apenas arrasta pelos cantos
+MakeDraggableCornersOnly(DesyncFrame)
+
+-- ==============================================================================
 -- SISTEMA DE FLING COM GIRO RÁPIDO
 -- ==============================================================================
 local function FindTargetByRole(roleName)
@@ -833,10 +1164,8 @@ local function StartFling(targetRole)
         if originalPosition and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.CFrame = originalPosition
             originalPosition = nil
-            NexusNotify("FLING", "Returned to original position", 3)
         end
         
-        NexusNotify("FLING", "Fling for " .. targetRole .. " disabled", 3)
         return
     end
     
@@ -859,10 +1188,7 @@ local function StartFling(targetRole)
             myRoot.Velocity = Vector3.new(0,0,0)
             myRoot.RotVelocity = Vector3.new(0,0,0)
         end
-        
-        NexusNotify("FLING", "Fling enabled for " .. targetRole .. " (SPINNING)", 3)
     else
-        NexusNotify("FLING", targetRole .. " not found", 3)
         flingActive = false
         flingTargetRole = nil
     end
@@ -1157,6 +1483,11 @@ task.spawn(function()
         
         if InvisFrame then
             InvisFrame.Visible = Config.ShowInvisBtn and not Config.GamepadEnabled
+        end
+        
+        -- NOVO: Mostrar botão Desync
+        if DesyncFrame then
+            DesyncFrame.Visible = Config.ShowDesyncBtn and Config.DesyncEnabled and not Config.GamepadEnabled
         end
 
         if dropped and not wasGunDropped then
@@ -1698,7 +2029,6 @@ local function AutoFarmCoinsFunc()
             autoFarmCoinsRunning = false
             if Config.AutoFarmCoins then
                 Config.AutoFarmCoins = false
-                NexusNotify("AUTO FARM", "Farm stopped - Player died", 3)
             end
             break
         end
@@ -1742,13 +2072,183 @@ task.spawn(function()
                         task.cancel(autoFarmCoinsThread)
                         autoFarmCoinsThread = nil
                     end
-                    
-                    NexusNotify("AUTO FARM", "Stopped - Player died", 3)
                 end
             end
         end
         task.wait(1)
     end
+end)
+
+-- ==============================================================================
+-- FUNÇÕES DESYNC (FAKE LAG/FAKE POS)
+-- ==============================================================================
+local function setTransparency(character, transparency)
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") or part:IsA("Decal") then
+            if part.Name ~= "HumanoidRootPart" then
+                part.Transparency = transparency
+            end
+        end
+    end
+end
+
+local function setHumanoidRootPartTransparency(character, transparency)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart and humanoidRootPart:IsA("BasePart") then
+        humanoidRootPart.Transparency = transparency
+    end
+end
+
+-- Função para criar o Marcador Visual Moderno (Ghost) com a cor do tema
+local function createModernGhost(cframe)
+    if ghostPart then ghostPart:Destroy() end
+    
+    -- Cor do tema para o marcador (usando a cor Ghost do tema)
+    local ghostColor = Theme.Ghost
+    
+    -- Cria a parte visual
+    local ghost = Instance.new("Part")
+    ghost.Name = "NexusDesyncGhost"
+    ghost.Size = Vector3.new(4, 6, 4)
+    ghost.Shape = Enum.PartType.Cylinder
+    ghost.CFrame = cframe * CFrame.Angles(0, 0, math.rad(90))
+    ghost.Anchored = true
+    ghost.CanCollide = false
+    ghost.Material = Enum.Material.ForceField
+    ghost.Color = ghostColor
+    ghost.Transparency = 0
+    ghost.CastShadow = false
+    ghost.Parent = Workspace
+    
+    -- Adiciona Efeito de Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Adornee = ghost
+    highlight.FillColor = ghostColor
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.8
+    highlight.OutlineTransparency = 0.2
+    highlight.Parent = ghost
+    
+    -- Adiciona Texto Flutuante
+    local bbGui = Instance.new("BillboardGui")
+    bbGui.Adornee = ghost
+    bbGui.Size = UDim2.new(0, 200, 0, 50)
+    bbGui.StudsOffset = Vector3.new(0, 4, 0)
+    bbGui.AlwaysOnTop = true
+    
+    local txt = Instance.new("TextLabel", bbGui)
+    txt.Size = UDim2.new(1, 0, 1, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text = "SERVER POSITION"
+    txt.Font = Enum.Font.Oswald
+    txt.TextColor3 = ghostColor
+    txt.TextStrokeTransparency = 0
+    txt.TextSize = 14
+    bbGui.Parent = ghost
+    
+    -- Animação suave
+    local info = TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+    local tween = TweenService:Create(highlight, info, {FillTransparency = 0.5})
+    tween:Play()
+    
+    return ghost
+end
+
+local function ToggleDesync()
+    PlayClickSound()
+    desync_on = not desync_on
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    if desync_on then
+        -- Salva posição original
+        local originalCFrame = character.HumanoidRootPart.CFrame
+        
+        -- Cria a cadeira de desync
+        desyncChair = Instance.new('Seat', Workspace)
+        desyncChair.Anchored = false
+        desyncChair.CanCollide = false
+        desyncChair.Name = 'NexusDesyncChair'
+        desyncChair.Transparency = 1
+        desyncChair.CFrame = originalCFrame
+        
+        -- Welda o personagem
+        local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+        if torso then
+            desyncWeld = Instance.new("Weld", desyncChair)
+            desyncWeld.Part0 = desyncChair
+            desyncWeld.Part1 = torso
+        end
+        
+        -- Visual e Visibilidade
+        setTransparency(character, 0)
+        setHumanoidRootPartTransparency(character, 1)
+        
+        -- Cria o marcador moderno na posição do servidor
+        ghostPart = createModernGhost(originalCFrame)
+        
+        -- Atualiza botão
+        DesyncBtn.Text = "ACTIVE"
+        DesyncBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+        DesyncStroke.Color = Color3.fromRGB(0, 255, 150)
+        
+        NexusNotify("DESYNC", "Fake Position Enabled!", 3)
+    else
+        -- Limpeza
+        if desyncChair then 
+            desyncChair:Destroy() 
+            desyncChair = nil 
+        end
+        
+        if ghostPart then 
+            ghostPart:Destroy() 
+            ghostPart = nil 
+        end
+        
+        desyncWeld = nil
+        
+        -- Restaura visual
+        setTransparency(character, 0)
+        setHumanoidRootPartTransparency(character, 1)
+        
+        -- Atualiza botão
+        DesyncBtn.Text = "DESYNC"
+        DesyncBtn.TextColor3 = Theme.Ghost
+        DesyncStroke.Color = Theme.Ghost
+        
+        NexusNotify("DESYNC", "Fake Position Disabled!", 3)
+    end
+end
+
+-- Conectar o botão
+DesyncBtn.MouseButton1Click:Connect(ToggleDesync)
+
+-- Reset ao morrer/respawnar
+LocalPlayer.CharacterAdded:Connect(function(character)
+    task.wait(0.5)
+    
+    -- Limpa objetos do mundo
+    local desyncChair = Workspace:FindFirstChild('NexusDesyncChair')
+    if desyncChair then desyncChair:Destroy() end
+    
+    if ghostPart then ghostPart:Destroy() ghostPart = nil end
+    
+    -- Reseta estados
+    desync_on = false
+    desyncWeld = nil
+    
+    -- Atualiza botão
+    if DesyncBtn then
+        DesyncBtn.Text = "DESYNC"
+        DesyncBtn.TextColor3 = Theme.Ghost
+        if DesyncStroke then
+            DesyncStroke.Color = Theme.Ghost
+        end
+    end
+    
+    setTransparency(character, 0)
+    setHumanoidRootPartTransparency(character, 1)
 end)
 
 -- ==============================================================================
@@ -1786,6 +2286,23 @@ ScreenGui.Destroying:Connect(function()
         conn:Disconnect()
     end
     gamepadConnections = {}
+    
+    -- Limpar conexões de coins
+    if coinsRemoveConn then
+        coinsRemoveConn:Disconnect()
+        coinsRemoveConn = nil
+    end
+    
+    if optimizerCoinsConn then
+        optimizerCoinsConn:Disconnect()
+        optimizerCoinsConn = nil
+    end
+    
+    -- Limpar objetos do Desync
+    local desyncChair = Workspace:FindFirstChild('NexusDesyncChair')
+    if desyncChair then desyncChair:Destroy() end
+    
+    if ghostPart then ghostPart:Destroy() ghostPart = nil end
 end)
 
 ToggleButton = Instance.new("TextButton")
@@ -2270,6 +2787,35 @@ CreateToggle(TabVisuals, "Show Distance", Config.Gun_Dist, function(v)
 end)
 
 local TabLegit = CreateTab("LEGIT / PLAYER")
+CreateSection(TabLegit, "FAKE LAG / FAKE POS")
+CreateToggle(TabLegit, "Enable Desync", Config.DesyncEnabled, function(v)
+    Config.DesyncEnabled = v
+    if not v and desync_on then
+        ToggleDesync() -- Desativa se estava ativo
+    end
+end)
+
+CreateToggle(TabLegit, "Show Desync Button", Config.ShowDesyncBtn, function(v)
+    Config.ShowDesyncBtn = v
+end)
+
+CreateButton(TabLegit, "TOGGLE DESYNC", function(btn, frame)
+    ToggleDesync()
+    if desync_on then
+        btn.Text = "DESYNC ACTIVE ✓"
+        btn.TextColor3 = Color3.fromRGB(0, 255, 150)
+        task.delay(1, function()
+            if btn then
+                btn.Text = "TOGGLE DESYNC"
+                btn.TextColor3 = Theme.Accent
+            end
+        end)
+    else
+        btn.Text = "TOGGLE DESYNC"
+        btn.TextColor3 = Theme.Accent
+    end
+end)
+
 CreateSection(TabLegit, "FLING")
 CreateButton(TabLegit, "FLING (SHERIFF)", function(btn, frame)
     ToggleFling("Sheriff")
@@ -2393,8 +2939,6 @@ CreateToggle(TabAutoFarm, "Coins Reach (4x Size)", Config.CoinsReach, function(v
                 obj.Size = coinOrig[obj] * 4
             end
         end)
-        
-        NexusNotify("COINS REACH", "Enabled - Coins 4x bigger", 3)
     else
         -- Desativar Coins Reach
         for obj, originalSize in pairs(coinOrig) do
@@ -2409,7 +2953,6 @@ CreateToggle(TabAutoFarm, "Coins Reach (4x Size)", Config.CoinsReach, function(v
         end
         
         coinOrig = {}
-        NexusNotify("COINS REACH", "Disabled", 3)
     end
 end)
 
@@ -2422,14 +2965,12 @@ CreateToggle(TabAutoFarm, "Auto Farm Coins", Config.AutoFarmCoins, function(v)
         autoFarmCoinsThread = task.spawn(function()
             AutoFarmCoinsFunc()
         end)
-        NexusNotify("AUTO FARM", "Started farming coins", 3)
     else
         autoFarmCoinsRunning = false
         if autoFarmCoinsThread then
             task.cancel(autoFarmCoinsThread)
             autoFarmCoinsThread = nil
         end
-        NexusNotify("AUTO FARM", "Stopped farming coins", 3)
     end
 end)
 
@@ -2452,12 +2993,278 @@ CreateButton(TabAutoFarm, "FORCE STOP FARM (if dead)", function(btn, frame)
             btn.TextColor3 = Theme.Accent
         end
     end)
-    
-    NexusNotify("AUTO FARM", "Force stopped farming", 3)
 end)
 
 -- ==============================================================================
--- ABA SETTINGS COM KEYBINDS
+-- ABA UPDATES (NOVA) - SEM AS FUNÇÕES DE MOEDAS
+-- ==============================================================================
+local TabUpdates = CreateTab("UPDATES")
+
+-- Título das atualizações
+CreateSection(TabUpdates, "📅 ÚLTIMAS ATUALIZAÇÕES")
+
+-- Frame para as atualizações
+local UpdatesFrame = Instance.new("Frame")
+UpdatesFrame.Size = UDim2.new(1, -10, 0, 200)
+UpdatesFrame.BackgroundColor3 = Theme.ItemBG
+UpdatesFrame.Parent = TabUpdates
+AddCorner(UpdatesFrame, 8)
+
+local UpdatesLayout = Instance.new("Frame")
+UpdatesLayout.Size = UDim2.new(1, 0, 1, 0)
+UpdatesLayout.BackgroundTransparency = 1
+UpdatesLayout.Parent = UpdatesFrame
+
+-- Título da versão atual
+local VersionTitle = Instance.new("TextLabel")
+VersionTitle.Size = UDim2.new(1, -10, 0, 30)
+VersionTitle.Position = UDim2.new(0, 10, 0, 5)
+VersionTitle.BackgroundTransparency = 1
+VersionTitle.Text = "🔄 VERSÃO 3.0 - NEXUS MM2🇧🇷"
+VersionTitle.TextColor3 = Theme.Accent
+VersionTitle.Font = Enum.Font.GothamBlack
+VersionTitle.TextSize = 14
+VersionTitle.TextXAlignment = Enum.TextXAlignment.Left
+VersionTitle.Parent = UpdatesLayout
+
+-- Data da atualização
+local UpdateDate = Instance.new("TextLabel")
+UpdateDate.Size = UDim2.new(1, -10, 0, 20)
+UpdateDate.Position = UDim2.new(0, 10, 0, 35)
+UpdateDate.BackgroundTransparency = 1
+UpdateDate.Text = "📅 Data: 31 de Janeiro 2026"
+UpdateDate.TextColor3 = Theme.TextDim
+UpdateDate.Font = Enum.Font.GothamSemibold
+UpdateDate.TextSize = 11
+UpdateDate.TextXAlignment = Enum.TextXAlignment.Left
+UpdateDate.Parent = UpdatesLayout
+
+-- Lista de mudanças
+local ChangesFrame = Instance.new("Frame")
+ChangesFrame.Size = UDim2.new(1, -20, 0, 140)
+ChangesFrame.Position = UDim2.new(0, 10, 0, 60)
+ChangesFrame.BackgroundTransparency = 1
+ChangesFrame.Parent = UpdatesLayout
+
+-- Lista de mudanças usando texto com bullets
+local ChangesText = Instance.new("TextLabel")
+ChangesText.Size = UDim2.new(1, 0, 1, 0)
+ChangesText.BackgroundTransparency = 1
+ChangesText.Text = "✅ NOVAS FUNÇÕES:\n• 🔧 Otimização Extrema (Test)\n• 👀 Nova aba Auto Farma (BETA) \n• 🎯 Silent Aim atualizado\n\n🔄 MELHORIAS:\n• ⚡ Sistema de gamepad otimizado\n• 🔥 Melhorias na aba combat \n• 🚫 Notificações reduzidas para melhor gameplay\n• 🔧 Configuração salva automaticamente\n\n💰 NOTA: Qualquer controle vai fucionar"
+ChangesText.TextColor3 = Theme.Text
+ChangesText.Font = Enum.Font.GothamSemibold
+ChangesText.TextSize = 11
+ChangesText.TextXAlignment = Enum.TextXAlignment.Left
+ChangesText.TextYAlignment = Enum.TextYAlignment.Top
+ChangesText.TextWrapped = true
+ChangesText.Parent = ChangesFrame
+
+-- ==============================================================================
+-- ABA CRÉDITOS
+-- ==============================================================================
+local TabCredits = CreateTab("CRÉDITOS")
+
+CreateSection(TabCredits, "DESENVOLVEDORES PRINCIPAIS")
+
+-- Frame para Vini.xits.script
+local ViniFrame = Instance.new("Frame")
+ViniFrame.Size = UDim2.new(1, -10, 0, 100)
+ViniFrame.BackgroundColor3 = Theme.ItemBG
+ViniFrame.Parent = TabCredits
+AddCorner(ViniFrame, 8)
+
+local ViniLayout = Instance.new("Frame")
+ViniLayout.Size = UDim2.new(1, 0, 1, 0)
+ViniLayout.BackgroundTransparency = 1
+ViniLayout.Parent = ViniFrame
+
+local ViniImage = Instance.new("ImageLabel")
+ViniImage.Size = UDim2.new(0, 60, 0, 60)
+ViniImage.Position = UDim2.new(0, 10, 0.5, -30)
+ViniImage.BackgroundTransparency = 1
+ViniImage.Image = "rbxassetid://76303542908459"
+ViniImage.Parent = ViniLayout
+
+local ViniName = Instance.new("TextLabel")
+ViniName.Size = UDim2.new(0.6, 0, 0, 30)
+ViniName.Position = UDim2.new(0, 80, 0.5, -25)
+ViniName.BackgroundTransparency = 1
+ViniName.Text = "Vini.xits.script"
+ViniName.TextColor3 = Theme.Accent
+ViniName.Font = Enum.Font.GothamBlack
+ViniName.TextSize = 14
+ViniName.TextXAlignment = Enum.TextXAlignment.Left
+ViniName.Parent = ViniLayout
+
+local ViniBtn = Instance.new("TextButton")
+ViniBtn.Size = UDim2.new(0.3, -10, 0, 25)
+ViniBtn.Position = UDim2.new(0, 80, 0.5, 5)
+ViniBtn.BackgroundColor3 = Theme.Accent
+ViniBtn.Text = "Canal do YouTube"
+ViniBtn.TextColor3 = Color3.new(1, 1, 1)
+ViniBtn.Font = Enum.Font.GothamBold
+ViniBtn.TextSize = 11
+ViniBtn.Parent = ViniLayout
+AddCorner(ViniBtn, 4)
+
+ViniBtn.MouseButton1Click:Connect(function()
+    PlayClickSound()
+    NexusNotify("CRÉDITOS", "Canal do Vini.xits.script copiado!", 3)
+end)
+
+-- Frame para Thur.xits
+local ThurFrame = Instance.new("Frame")
+ThurFrame.Size = UDim2.new(1, -10, 0, 80)
+ThurFrame.Position = UDim2.new(0, 0, 0, 110)
+ThurFrame.BackgroundColor3 = Theme.ItemBG
+ThurFrame.Parent = TabCredits
+AddCorner(ThurFrame, 8)
+
+local ThurLayout = Instance.new("Frame")
+ThurLayout.Size = UDim2.new(1, 0, 1, 0)
+ThurLayout.BackgroundTransparency = 1
+ThurLayout.Parent = ThurFrame
+
+local ThurName = Instance.new("TextLabel")
+ThurName.Size = UDim2.new(0.8, 0, 0, 25)
+ThurName.Position = UDim2.new(0, 10, 0, 10)
+ThurName.BackgroundTransparency = 1
+ThurName.Text = "Thur.xits"
+ThurName.TextColor3 = Theme.Accent
+ThurName.Font = Enum.Font.GothamBlack
+ThurName.TextSize = 14
+ThurName.TextXAlignment = Enum.TextXAlignment.Left
+ThurName.Parent = ThurLayout
+
+local ThurThanks = Instance.new("TextLabel")
+ThurThanks.Size = UDim2.new(0.9, 0, 0, 40)
+ThurThanks.Position = UDim2.new(0, 10, 0, 35)
+ThurThanks.BackgroundTransparency = 1
+ThurThanks.Text = "Obrigado Thur.xits por ajudar a fazer algumas funções"
+ThurThanks.TextColor3 = Theme.TextDim
+ThurThanks.Font = Enum.Font.GothamSemibold
+ThurThanks.TextSize = 11
+ThurThanks.TextXAlignment = Enum.TextXAlignment.Left
+ThurThanks.TextWrapped = true
+ThurThanks.Parent = ThurLayout
+
+-- Frame para Yudy.xits
+local YudyFrame = Instance.new("Frame")
+YudyFrame.Size = UDim2.new(1, -10, 0, 110)
+YudyFrame.Position = UDim2.new(0, 0, 0, 200)
+YudyFrame.BackgroundColor3 = Theme.ItemBG
+YudyFrame.Parent = TabCredits
+AddCorner(YudyFrame, 8)
+
+local YudyLayout = Instance.new("Frame")
+YudyLayout.Size = UDim2.new(1, 0, 1, 0)
+YudyLayout.BackgroundTransparency = 1
+YudyLayout.Parent = YudyFrame
+
+local YudyImage = Instance.new("ImageLabel")
+YudyImage.Size = UDim2.new(0, 60, 0, 60)
+YudyImage.Position = UDim2.new(0, 10, 0, 10)
+YudyImage.BackgroundTransparency = 1
+YudyImage.Image = "rbxassetid://108983272236186"
+YudyImage.Parent = YudyLayout
+
+local YudyName = Instance.new("TextLabel")
+YudyName.Size = UDim2.new(0.7, 0, 0, 30)
+YudyName.Position = UDim2.new(0, 80, 0, 10)
+YudyName.BackgroundTransparency = 1
+YudyName.Text = "Obrigado Yudy.xits pelo Apoio"
+YudyName.TextColor3 = Theme.Accent
+YudyName.Font = Enum.Font.GothamBlack
+YudyName.TextSize = 14
+YudyName.TextXAlignment = Enum.TextXAlignment.Left
+YudyName.TextWrapped = true
+YudyName.Parent = YudyLayout
+
+local YudyBtn = Instance.new("TextButton")
+YudyBtn.Size = UDim2.new(0.3, -10, 0, 25)
+YudyBtn.Position = UDim2.new(0, 80, 0, 45)
+YudyBtn.BackgroundColor3 = Theme.Accent
+YudyBtn.Text = "Canal do YouTube"
+YudyBtn.TextColor3 = Color3.new(1, 1, 1)
+YudyBtn.Font = Enum.Font.GothamBold
+YudyBtn.TextSize = 11
+YudyBtn.Parent = YudyLayout
+AddCorner(YudyBtn, 4)
+
+YudyBtn.MouseButton1Click:Connect(function()
+    PlayClickSound()
+    NexusNotify("CRÉDITOS", "Canal do Yudy.xits copiado!", 3)
+end)
+
+-- Frame para Seven
+local SevenFrame = Instance.new("Frame")
+SevenFrame.Size = UDim2.new(1, -10, 0, 100)
+SevenFrame.Position = UDim2.new(0, 0, 0, 320)
+SevenFrame.BackgroundColor3 = Theme.ItemBG
+SevenFrame.Parent = TabCredits
+AddCorner(SevenFrame, 8)
+
+local SevenLayout = Instance.new("Frame")
+SevenLayout.Size = UDim2.new(1, 0, 1, 0)
+SevenLayout.BackgroundTransparency = 1
+SevenLayout.Parent = SevenFrame
+
+local SevenImage = Instance.new("ImageLabel")
+SevenImage.Size = UDim2.new(0, 60, 0, 60)
+SevenImage.Position = UDim2.new(0, 10, 0.5, -30)
+SevenImage.BackgroundTransparency = 1
+SevenImage.Image = "rbxassetid://86810351938818"
+SevenImage.Parent = SevenLayout
+
+local SevenName = Instance.new("TextLabel")
+SevenName.Size = UDim2.new(0.7, 0, 0, 30)
+SevenName.Position = UDim2.new(0, 80, 0.5, -25)
+SevenName.BackgroundTransparency = 1
+SevenName.Text = "Obrigado Seven por ajudar com novas ideias"
+SevenName.TextColor3 = Theme.Accent
+SevenName.Font = Enum.Font.GothamBlack
+SevenName.TextSize = 14
+SevenName.TextXAlignment = Enum.TextXAlignment.Left
+SevenName.TextWrapped = true
+SevenName.Parent = SevenLayout
+
+CreateSection(TabCredits, "AGRADECIMENTOS ESPECIAIS")
+
+-- Linha separadora
+local Separator = Instance.new("Frame")
+Separator.Size = UDim2.new(1, -20, 0, 1)
+Separator.Position = UDim2.new(0, 10, 0, 430)
+Separator.BackgroundColor3 = Theme.Accent
+Separator.BackgroundTransparency = 0.5
+Separator.Parent = TabCredits
+
+-- Texto adicional
+local FinalThanksLabel = Instance.new("TextLabel")
+FinalThanksLabel.Size = UDim2.new(1, -10, 0, 40)
+FinalThanksLabel.Position = UDim2.new(0, 0, 0, 440)
+FinalThanksLabel.BackgroundTransparency = 1
+FinalThanksLabel.Text = "E também obrigado a todos que usam o Nexus Hub ❤"
+FinalThanksLabel.TextColor3 = Color3.fromRGB(255, 105, 180)
+FinalThanksLabel.Font = Enum.Font.GothamBold
+FinalThanksLabel.TextSize = 13
+FinalThanksLabel.TextWrapped = true
+FinalThanksLabel.TextYAlignment = Enum.TextYAlignment.Top
+FinalThanksLabel.Parent = TabCredits
+
+local ThanksLabel = Instance.new("TextLabel")
+ThanksLabel.Size = UDim2.new(1, -10, 0, 60)
+ThanksLabel.Position = UDim2.new(0, 0, 0, 490)
+ThanksLabel.BackgroundTransparency = 1
+ThanksLabel.Text = "Obrigado por usar o Nexus Hub MM2!\nSe divirta 😋"
+ThanksLabel.TextColor3 = Theme.TextDim
+ThanksLabel.Font = Enum.Font.GothamSemibold
+ThanksLabel.TextSize = 12
+ThanksLabel.TextWrapped = true
+ThanksLabel.TextYAlignment = Enum.TextYAlignment.Top
+ThanksLabel.Parent = TabCredits
+
+-- ==============================================================================
+-- ABA SETTINGS COM KEYBINDS E AS FUNÇÕES DE MOEDAS
 -- ==============================================================================
 local TabSettings = CreateTab("SETTINGS")
 
@@ -2481,6 +3288,18 @@ end)
 CreateKeybind(TabSettings, "Grab Gun (B)", Config.GrabGunKey, function(key)
     Config.GrabGunKey = key
     SetupGamepadControls()
+end)
+
+CreateSection(TabSettings, "COINS FUNCTIONS")
+-- Adicionar as novas opções de coins na aba SETTINGS
+CreateToggle(TabSettings, "Coins Remove", Config.CoinsRemove, function(v)
+    Config.CoinsRemove = v
+    ApplyCoinsRemove(v)
+end)
+
+CreateToggle(TabSettings, "Optimizer Coins", Config.OptimizerCoins, function(v)
+    Config.OptimizerCoins = v
+    ApplyOptimizerCoins(v)
 end)
 
 CreateSection(TabSettings, "CUSTOM THEME")
@@ -2634,6 +3453,16 @@ local function SaveConfig(btnLabel, btnFrame)
             }
         end
         
+        -- NOVO: Salvar posição do DesyncFrame
+        if DesyncFrame then
+            Config.GuiPositions["DesyncFrame"] = {
+                DesyncFrame.Position.X.Scale,
+                DesyncFrame.Position.X.Offset,
+                DesyncFrame.Position.Y.Scale,
+                DesyncFrame.Position.Y.Offset
+            }
+        end
+        
         -- Converter a tabela Config para JSON
         local success, encoded = pcall(function()
             return HttpService:JSONEncode(Config)
@@ -2645,12 +3474,12 @@ local function SaveConfig(btnLabel, btnFrame)
                 writefile(ConfigFileName, encoded)
             end)
             
+            -- Aplicar tema imediatamente após salvar
+            ApplyThemeToGUI()
+            
             if btnLabel then
                 btnLabel.Text = "SAVED!"
                 btnLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-                
-                -- Aplicar tema imediatamente após salvar
-                ApplyThemeToGUI()
                 
                 task.delay(1, function()
                     if btnLabel then
@@ -2658,8 +3487,6 @@ local function SaveConfig(btnLabel, btnFrame)
                         btnLabel.TextColor3 = Theme.Accent
                     end
                 end)
-            else
-                NexusNotify("CONFIG", "Configuration saved! Gamepad: " .. tostring(Config.GamepadEnabled), 3)
             end
         else
             if btnLabel then
@@ -2764,7 +3591,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-LocalPlayer.CharacterAdded:Connect(function()
+LocalPlayer.CharacterAdded:Connect(function(character)
     InvisActive = false
     InvisBtn.Text = "INVISIBLE"
     InvisBtn.TextColor3 = Theme.Ghost
@@ -2782,6 +3609,9 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
+-- ==============================================================================
+-- ANIMAÇÕES DOS BOTÕES FLUTUANTES
+-- ==============================================================================
 task.spawn(function()
     while true do
         if GrabFrame and GrabFrame.Visible then
@@ -2810,6 +3640,25 @@ task.spawn(function()
             t2.Completed:Wait()
         elseif InvisActive then
             InvisStroke.Transparency = 0
+            task.wait(0.5)
+        else
+            task.wait(1)
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if DesyncFrame and DesyncFrame.Visible and not desync_on then
+            local t1 = TweenService:Create(DesyncStroke, TweenInfo.new(1, Enum.EasingStyle.Sine), {Transparency = 0.4})
+            t1:Play()
+            t1.Completed:Wait()
+            
+            local t2 = TweenService:Create(DesyncStroke, TweenInfo.new(1, Enum.EasingStyle.Sine), {Transparency = 0})
+            t2:Play()
+            t2.Completed:Wait()
+        elseif desync_on then
+            DesyncStroke.Transparency = 0
             task.wait(0.5)
         else
             task.wait(1)
@@ -2846,127 +3695,10 @@ local function LoadGuiPositions()
         
         -- Carregar posição do InvisFrame
         SetPos(InvisFrame, "InvisFrame")
+        
+        -- NOVO: Carregar posição do DesyncFrame
+        SetPos(DesyncFrame, "DesyncFrame")
     end
-end
-
--- ==============================================================================
--- FUNÇÕES PARA TEMA CUSTOMIZADO
--- ==============================================================================
-local function ApplyThemeToGUI()
-    -- Atualizar ToggleButton
-    if ToggleButton then
-        ToggleButton.BackgroundColor3 = Theme.Background
-        ToggleButton.TextColor3 = Theme.Accent
-        local toggleStroke = ToggleButton:FindFirstChildOfClass("UIStroke")
-        if toggleStroke then
-            toggleStroke.Color = Theme.Accent
-        end
-    end
-    
-    -- Atualizar MainFrame
-    if MainFrame then
-        MainFrame.BackgroundColor3 = Theme.Background
-        local mainStroke = MainFrame:FindFirstChildOfClass("UIStroke")
-        if mainStroke then
-            mainStroke.Color = Theme.Accent
-        end
-    end
-    
-    -- Atualizar Sidebar
-    if Sidebar then
-        Sidebar.BackgroundColor3 = Theme.Sidebar
-    end
-    
-    -- Atualizar TitleLabel (título da GUI)
-    if TitleLabel then
-        TitleLabel.TextColor3 = Theme.Accent
-    end
-    
-    -- Atualizar botões das abas
-    for _, tab in ipairs(tabs) do
-        if tab.Btn then
-            tab.Btn.BackgroundColor3 = Theme.Background
-            tab.Btn.TextColor3 = Theme.TextDim
-            if tab.Frame and tab.Frame.Visible then
-                tab.Btn.BackgroundColor3 = Theme.AccentDark
-                tab.Btn.TextColor3 = Theme.Text
-            end
-        end
-    end
-    
-    -- Atualizar ShootButton
-    if ShootButton then
-        ShootButton.BackgroundColor3 = Theme.Background
-        ShootButton.TextColor3 = Theme.Accent
-        local shootStroke = ShootButton:FindFirstChildOfClass("UIStroke")
-        if shootStroke then
-            shootStroke.Color = Theme.Accent
-            local gradient = shootStroke:FindFirstChildOfClass("UIGradient")
-            if gradient then
-                gradient.Color = ColorSequence.new{
-                    ColorSequenceKeypoint.new(0.00, Theme.Accent),
-                    ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(1.00, Theme.Accent)
-                }
-            end
-        end
-    end
-    
-    -- Atualizar GrabFrame
-    if GrabFrame then
-        GrabFrame.BackgroundColor3 = Theme.Background
-        local grabStroke = GrabFrame:FindFirstChildOfClass("UIStroke")
-        if grabStroke then
-            grabStroke.Color = Theme.Accent
-        end
-    end
-    
-    if GrabBtn then
-        GrabBtn.TextColor3 = Theme.Accent
-    end
-    
-    -- Atualizar InvisFrame
-    if InvisFrame then
-        InvisFrame.BackgroundColor3 = Theme.Background
-        local invisStroke = InvisFrame:FindFirstChildOfClass("UIStroke")
-        if invisStroke then
-            invisStroke.Color = Theme.Ghost
-        end
-    end
-    
-    if InvisBtn then
-        InvisBtn.TextColor3 = Theme.Ghost
-    end
-    
-    -- Atualizar botões de tema (na aba SETTINGS)
-    if FirstRow then
-        for _, child in ipairs(FirstRow:GetChildren()) do
-            if child:IsA("TextButton") then
-                child.BackgroundColor3 = Theme.ItemBG
-                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
-            end
-        end
-    end
-    
-    if SecondRow then
-        for _, child in ipairs(SecondRow:GetChildren()) do
-            if child:IsA("TextButton") then
-                child.BackgroundColor3 = Theme.ItemBG
-                child.TextColor3 = Config.CustomTheme == child.Text and Theme.Accent or Theme.TextDim
-            end
-        end
-    end
-end
-
-local function SetTheme(themeName)
-    if Themes[themeName] then
-        Theme = Themes[themeName]
-        Config.CustomTheme = themeName
-        ApplyThemeToGUI()
-        NexusNotify("THEME", "Theme changed to " .. themeName, 3)
-        return true
-    end
-    return false
 end
 
 -- ==============================================================================
@@ -2987,12 +3719,26 @@ if Config.AntiLag then
     Lighting.ShadowColor = Color3.new(0,0,0)
 end
 
+-- Aplicar Coins Remove e Optimizer Coins se estiverem ativos
+if Config.CoinsRemove then
+    ApplyCoinsRemove(true)
+end
+
+if Config.OptimizerCoins then
+    ApplyOptimizerCoins(true)
+end
+
 -- Aplicar tema inicial
+task.wait(0.5) -- Pequeno delay para garantir que tudo foi criado
 ApplyThemeToGUI()
 
 -- Carregar posições ANTES de qualquer coisa
 task.wait(0.1) -- Pequeno delay para garantir que tudo foi criado
 LoadGuiPositions()
+
+-- Aplicar tema novamente após carregar posições
+task.wait(0.1)
+ApplyThemeToGUI()
 
 -- Aplicar Coins Reach se estiver ativado
 if Config.CoinsReach then
@@ -3015,8 +3761,6 @@ if Config.CoinsReach then
             obj.Size = coinOrig[obj] * 4
         end
     end)
-    
-    NexusNotify("COINS REACH", "Auto-enabled from saved config", 3)
 end
 
 -- Configurar controles de gamepad
@@ -3040,12 +3784,17 @@ end)
 task.wait(1)
 NexusNotify("NEXUS HUB MM2",
     "✅ Script carregado com sucesso!\n\n" ..
-    "🔄 Problemas corrigidos:\n" ..
+    "🎨 Sistema de Temas CORRIGIDO:\n" ..
+    "• Agora você pode mudar o tema!\n" ..
+    "• 6 temas disponíveis\n" ..
+    "• Aplicação automática\n\n" ..
+    "🆕 NOVA FUNÇÃO:\n" ..
+    "• Fake Lag/Fake Pos (Desync)\n" ..
+    "• Botão flutuante personalizável\n" ..
+    "• Marcador visual muda com o tema\n\n" ..
+    "🔄 Outras correções:\n" ..
     "• Grab Gun Gamepad FUNCIONANDO\n" ..
-    "• Botão RT fixo (auto-fire)\n" ..
     "• Sistema de detecção contínua\n" ..
     "• Busca melhorada por GunDrop\n" ..
-    "• Dispara imediatamente + contínuo\n" ..
-    "• Notificações de sucesso/falha\n\n" ..
-    "📌 Gamepad: RT = DISPARO DIRETO!\n" ..
-    "📌 Gamepad: B = GRAB GUN FUNCIONA!", 10)
+    "• Dispara imediatamente + contínuo\n\n" ..
+    "📚 Aba CRÉDITOS RESTAURADA!", 10)
