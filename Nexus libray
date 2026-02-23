@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Nexus Library v2.0 - Framework Definitivo para Nexus Hub MM2
+-- Nexus Library v4.0 - Framework Definitivo (Com Save Config Customizável)
 -- ==============================================================================
 local NexusLibrary = {}
 
@@ -8,27 +8,24 @@ local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
+local CustomSoundId = "rbxassetid://4499400560"
+
+-- Registro de Elementos para Salvar a Posição
+NexusLibrary.SavedElements = {}
 
 -- ==============================================================================
 -- THEME SYSTEM
 -- ==============================================================================
 NexusLibrary.Themes = {
-    Original = {
-        Background = Color3.fromRGB(15, 15, 20), Sidebar = Color3.fromRGB(20, 20, 25), Accent = Color3.fromRGB(0, 170, 255), AccentDark = Color3.fromRGB(0, 80, 150), Ghost = Color3.fromRGB(140, 50, 255), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 30, 35), InputBG = Color3.fromRGB(10, 10, 15)
-    },
-    Red = {
-        Background = Color3.fromRGB(20, 15, 15), Sidebar = Color3.fromRGB(25, 20, 20), Accent = Color3.fromRGB(255, 0, 0), AccentDark = Color3.fromRGB(150, 0, 0), Ghost = Color3.fromRGB(255, 50, 140), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(35, 30, 30), InputBG = Color3.fromRGB(15, 10, 10)
-    },
-    Blue = {
-        Background = Color3.fromRGB(15, 15, 20), Sidebar = Color3.fromRGB(20, 20, 25), Accent = Color3.fromRGB(0, 100, 255), AccentDark = Color3.fromRGB(0, 50, 150), Ghost = Color3.fromRGB(50, 140, 255), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 30, 35), InputBG = Color3.fromRGB(10, 10, 15)
-    },
-    Verde = {
-        Background = Color3.fromRGB(15, 20, 15), Sidebar = Color3.fromRGB(20, 25, 20), Accent = Color3.fromRGB(0, 255, 0), AccentDark = Color3.fromRGB(0, 150, 0), Ghost = Color3.fromRGB(140, 255, 50), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 35, 30), InputBG = Color3.fromRGB(10, 15, 10)
-    }
+    Original = { Background = Color3.fromRGB(15, 15, 20), Sidebar = Color3.fromRGB(20, 20, 25), Accent = Color3.fromRGB(0, 170, 255), AccentDark = Color3.fromRGB(0, 80, 150), Ghost = Color3.fromRGB(140, 50, 255), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 30, 35), InputBG = Color3.fromRGB(10, 10, 15) },
+    Red = { Background = Color3.fromRGB(20, 15, 15), Sidebar = Color3.fromRGB(25, 20, 20), Accent = Color3.fromRGB(255, 0, 0), AccentDark = Color3.fromRGB(150, 0, 0), Ghost = Color3.fromRGB(255, 50, 140), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(35, 30, 30), InputBG = Color3.fromRGB(15, 10, 10) },
+    Blue = { Background = Color3.fromRGB(15, 15, 20), Sidebar = Color3.fromRGB(20, 20, 25), Accent = Color3.fromRGB(0, 100, 255), AccentDark = Color3.fromRGB(0, 50, 150), Ghost = Color3.fromRGB(50, 140, 255), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 30, 35), InputBG = Color3.fromRGB(10, 10, 15) },
+    Verde = { Background = Color3.fromRGB(15, 20, 15), Sidebar = Color3.fromRGB(20, 25, 20), Accent = Color3.fromRGB(0, 255, 0), AccentDark = Color3.fromRGB(0, 150, 0), Ghost = Color3.fromRGB(140, 255, 50), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 35, 30), InputBG = Color3.fromRGB(10, 15, 10) },
+    Purple = { Background = Color3.fromRGB(20, 15, 20), Sidebar = Color3.fromRGB(25, 20, 25), Accent = Color3.fromRGB(170, 0, 255), AccentDark = Color3.fromRGB(80, 0, 150), Ghost = Color3.fromRGB(200, 50, 255), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(35, 30, 35), InputBG = Color3.fromRGB(15, 10, 15) },
+    Yellow = { Background = Color3.fromRGB(20, 20, 15), Sidebar = Color3.fromRGB(25, 25, 20), Accent = Color3.fromRGB(255, 255, 0), AccentDark = Color3.fromRGB(150, 150, 0), Ghost = Color3.fromRGB(255, 255, 50), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(35, 35, 30), InputBG = Color3.fromRGB(15, 15, 10) }
 }
 
 -- ==============================================================================
@@ -55,47 +52,39 @@ local function Corner(Inst, Radius)
     return CornerObj
 end
 
--- Draggable Original do mm2v5
+function NexusLibrary:PlaySound()
+    task.spawn(function()
+        local s = Instance.new("Sound")
+        s.Name = "NexusClickSound"
+        s.SoundId = CustomSoundId
+        s.Volume = 1
+        s.Parent = CoreGui
+        s:Play()
+        s.Ended:Connect(function() s:Destroy() end)
+    end)
+end
+
 local function MakeDraggable(frame, trigger)
     trigger = trigger or frame
     local dragging, dragInput, dragStart, startPos
-    
     trigger.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
             input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
             end)
         end
     end)
-    
     trigger.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
     end)
-    
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input == dragInput then
             local delta = input.Position - dragStart
             frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
-    end)
-end
-
-function NexusLibrary:PlaySound(SoundId)
-    task.spawn(function()
-        local s = Instance.new("Sound")
-        s.Name = "NexusClickSound"
-        s.SoundId = SoundId or "rbxassetid://4499400560"
-        s.Volume = 1
-        s.Parent = CoreGui
-        s:Play()
-        s.Ended:Connect(function() s:Destroy() end)
     end)
 end
 
@@ -111,7 +100,7 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
     Screen.DisplayOrder = 1e6
     Screen.Name = "NexusHub_" .. HttpService:GenerateGUID(false)
 
-    -- Toggle Button ("N" Flutuante)
+    -- Toggle Button ("N" Flutuante Original)
     local ToggleButton = Instance.new("TextButton")
     ToggleButton.Name = "ToggleButton"
     ToggleButton.Parent = Screen
@@ -139,10 +128,13 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
     Corner(Frame, 10)
     local MainStroke = Stroke(Frame, Theme.Accent, 2)
 
+    -- Registra os elementos principais para o Save Config
+    NexusLibrary.SavedElements["MainWindow"] = Frame
+    NexusLibrary.SavedElements["ToggleButton"] = ToggleButton
+
     ToggleButton.MouseButton1Click:Connect(function()
         NexusLibrary:PlaySound()
         Frame.Visible = not Frame.Visible
-        -- Efeito de clique do mm2v5 original
         if Frame.Visible then
             Frame.Size = UDim2.new(0, 0, 0, 0)
             Frame.BackgroundTransparency = 1
@@ -150,7 +142,6 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
         end
     end)
 
-    -- Sidebar
     local Sidebar = Instance.new("Frame")
     Sidebar.Parent = Frame
     Sidebar.Size = UDim2.new(0, 100, 1, 0)
@@ -226,13 +217,6 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
         layout.Padding = UDim.new(0, 6)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
 
-        local padding = Instance.new("UIPadding")
-        padding.Parent = TabFrame
-        padding.PaddingTop = UDim.new(0, 5)
-        padding.PaddingLeft = UDim.new(0, 5)
-        padding.PaddingRight = UDim.new(0, 5)
-        padding.PaddingBottom = UDim.new(0, 5)
-
         table.insert(tabs, {Btn = TabBtn, Frame = TabFrame, Name = Name})
 
         TabBtn.MouseButton1Click:Connect(function()
@@ -284,6 +268,41 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
             end)
         end
 
+        function Tab:Input(Text, Placeholder, Callback)
+            local InputFrame = Instance.new("Frame")
+            InputFrame.Size = UDim2.new(1, 0, 0, 32)
+            InputFrame.BackgroundColor3 = currentTheme.ItemBG
+            InputFrame.Parent = TabFrame
+            Corner(InputFrame, 6)
+
+            local Label = Instance.new("TextLabel")
+            Label.Size = UDim2.new(0.5, 0, 1, 0)
+            Label.Position = UDim2.new(0, 8, 0, 0)
+            Label.BackgroundTransparency = 1
+            Label.Text = Text
+            Label.TextColor3 = currentTheme.Text
+            Label.Font = Enum.Font.GothamSemibold
+            Label.TextSize = 12
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = InputFrame
+
+            local Box = Instance.new("TextBox")
+            Box.Size = UDim2.new(0.4, 0, 0.7, 0)
+            Box.Position = UDim2.new(0.55, 0, 0.15, 0)
+            Box.BackgroundColor3 = currentTheme.InputBG
+            Box.PlaceholderText = Placeholder
+            Box.Text = ""
+            Box.TextColor3 = currentTheme.Accent
+            Box.Font = Enum.Font.GothamBold
+            Box.TextSize = 11
+            Box.Parent = InputFrame
+            Corner(Box, 4)
+
+            Box.FocusLost:Connect(function()
+                if Callback then Callback(Box.Text) end
+            end)
+        end
+
         function Tab:Toggle(Text, Default, Callback)
             local ToggleFrame = Instance.new("Frame")
             ToggleFrame.Size = UDim2.new(1, 0, 0, 32)
@@ -323,9 +342,16 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
                 TweenService:Create(Indicator, TweenInfo.new(0.3), {BackgroundColor3 = toggled and currentTheme.Accent or Color3.fromRGB(60, 60, 60)}):Play()
                 if Callback then Callback(toggled) end
             end)
+            
+            local API = {}
+            function API:Set(bool)
+                toggled = bool
+                Indicator.BackgroundColor3 = toggled and currentTheme.Accent or Color3.fromRGB(60, 60, 60)
+                if Callback then Callback(toggled) end
+            end
+            return API
         end
 
-        -- Dropdown no padrão mm2v5 vazando da UI
         function Tab:Dropdown(Text, Options, Default, Callback)
             local DropdownFrame = Instance.new("Frame")
             DropdownFrame.Size = UDim2.new(1, 0, 0, 32)
@@ -450,50 +476,44 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
 end
 
 -- ==============================================================================
--- NOTIFICAÇÕES (100% CORRIGIDO E EMPILHADO)
+-- NOTIFICAÇÕES (Empilhando)
 -- ==============================================================================
 function NexusLibrary:Notify(Title, Text, Duration)
     Duration = Duration or 3
-    
     local NotifyContainer = CoreGui:FindFirstChild("NexusNotifyContainer")
     local NotifyList
     
     if not NotifyContainer then
-        NotifyContainer = Instance.new("ScreenGui")
+        NotifyContainer = Instance.new("ScreenGui", CoreGui)
         NotifyContainer.Name = "NexusNotifyContainer"
-        NotifyContainer.Parent = CoreGui
         NotifyContainer.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         NotifyContainer.IgnoreGuiInset = true
 
-        NotifyList = Instance.new("Frame")
+        NotifyList = Instance.new("Frame", NotifyContainer)
         NotifyList.Name = "NotifyList"
         NotifyList.Size = UDim2.new(0, 300, 1, 0)
-        NotifyList.AnchorPoint = Vector2.new(1, 0)
-        NotifyList.Position = UDim2.new(1, -20, 0, 0) -- Empilhar a partir do fundo
+        NotifyList.AnchorPoint = Vector2.new(0, 0)
+        NotifyList.Position = UDim2.new(0, 20, 0, 0)
         NotifyList.BackgroundTransparency = 1
-        NotifyList.Parent = NotifyContainer
 
-        local NotifyLayout = Instance.new("UIListLayout")
-        NotifyLayout.Parent = NotifyList
+        local NotifyLayout = Instance.new("UIListLayout", NotifyList)
         NotifyLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        NotifyLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom -- Sobe de baixo para cima
+        NotifyLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
         NotifyLayout.Padding = UDim.new(0, 8)
     else
         NotifyList = NotifyContainer:FindFirstChild("NotifyList")
     end
 
-    local Frame = Instance.new("Frame")
+    local Frame = Instance.new("Frame", NotifyList)
     Frame.Size = UDim2.new(1, 0, 0, 60)
     Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     Frame.BackgroundTransparency = 0.1
     Frame.BorderSizePixel = 0
-    Frame.Parent = NotifyList
 
     local UIStroke = Stroke(Frame, Color3.fromRGB(0, 170, 255), 1.5)
     Corner(Frame, 6)
 
-    local TitleLbl = Instance.new("TextLabel")
-    TitleLbl.Parent = Frame
+    local TitleLbl = Instance.new("TextLabel", Frame)
     TitleLbl.Size = UDim2.new(1, -10, 0, 20)
     TitleLbl.Position = UDim2.new(0, 10, 0, 5)
     TitleLbl.BackgroundTransparency = 1
@@ -503,8 +523,7 @@ function NexusLibrary:Notify(Title, Text, Duration)
     TitleLbl.TextSize = 14
     TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local MsgLbl = Instance.new("TextLabel")
-    MsgLbl.Parent = Frame
+    local MsgLbl = Instance.new("TextLabel", Frame)
     MsgLbl.Size = UDim2.new(1, -10, 0, 30)
     MsgLbl.Position = UDim2.new(0, 10, 0, 25)
     MsgLbl.BackgroundTransparency = 1
@@ -538,25 +557,22 @@ function NexusLibrary:Notify(Title, Text, Duration)
 end
 
 -- ==============================================================================
--- FLOATING BUTTONS (Estética Original mm2v5 + Animações Tween)
+-- FLOATING BUTTONS (Com SaveKey)
 -- ==============================================================================
-function NexusLibrary:CreateFloatingButton(Text, Type, Position, ThemeName, Callback)
+function NexusLibrary:CreateFloatingButton(Text, Type, Position, ThemeName, SaveKey, Callback)
     local Theme = NexusLibrary.Themes[ThemeName or "Original"]
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Parent = CoreGui
+    local ScreenGui = Instance.new("ScreenGui", CoreGui)
     ScreenGui.IgnoreGuiInset = true
     ScreenGui.ResetOnSpawn = false
 
-    local Frame = Instance.new("Frame")
-    Frame.Parent = ScreenGui
+    local Frame = Instance.new("Frame", ScreenGui)
     Frame.Position = Position or UDim2.new(0.5, 0, 0.5, 0)
     Frame.BackgroundColor3 = Theme.Background
     Frame.BackgroundTransparency = 0.2
     Frame.Visible = true
     Frame.BorderSizePixel = 0
     
-    local Button = Instance.new("TextButton")
-    Button.Parent = Frame
+    local Button = Instance.new("TextButton", Frame)
     Button.Size = UDim2.new(1, 0, 1, 0)
     Button.BackgroundTransparency = 1
     Button.Text = Text
@@ -564,30 +580,30 @@ function NexusLibrary:CreateFloatingButton(Text, Type, Position, ThemeName, Call
     Button.AutoButtonColor = false
 
     local StrokeObj = Stroke(Frame, Theme.Accent, 2)
-    MakeDraggable(Frame) -- Draggable Original
+    MakeDraggable(Frame)
     
-    -- Configurações e Animações Idênticas ao mm2v5
+    -- Registra para salvar a posição
+    if SaveKey then
+        NexusLibrary.SavedElements[SaveKey] = Frame
+    end
+
     if Type == "Shoot" then
         Frame.Size = UDim2.new(0, 220, 0, 80)
         Button.TextSize = 24
         Button.TextColor3 = Theme.Accent
         Corner(Frame, 10)
         
-        local Gradient = Instance.new("UIGradient")
-        Gradient.Parent = StrokeObj
+        local Gradient = Instance.new("UIGradient", StrokeObj)
         Gradient.Color = ColorSequence.new{
             ColorSequenceKeypoint.new(0.00, Theme.Accent),
             ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 255, 255)),
             ColorSequenceKeypoint.new(1.00, Theme.Accent)
         }
-        
         task.spawn(function()
             while Frame.Parent do
                 if Frame.Visible then
                     Gradient.Rotation = (Gradient.Rotation + 2) % 360
-                    local t = tick() % 2
-                    local alpha = 0.5 + 0.5 * math.sin(t * math.pi)
-                    Button.TextColor3 = Theme.Accent:Lerp(Color3.fromRGB(255, 255, 255), alpha)
+                    Button.TextColor3 = Theme.Accent:Lerp(Color3.fromRGB(255, 255, 255), 0.5 + 0.5 * math.sin(tick() * math.pi))
                 end
                 task.wait(0.01)
             end
@@ -597,27 +613,17 @@ function NexusLibrary:CreateFloatingButton(Text, Type, Position, ThemeName, Call
         Button.TextSize = 12
         Corner(Frame, 6)
         
-        if Type == "Ghost" then
-            StrokeObj.Color = Theme.Ghost
-            Button.TextColor3 = Theme.Ghost
-        elseif Type == "Grab" then
-            StrokeObj.Color = Theme.Accent
-            Button.TextColor3 = Theme.Accent
-        elseif Type == "Desync" then
-            StrokeObj.Color = Color3.fromRGB(0, 255, 150)
-            Button.TextColor3 = Color3.fromRGB(0, 255, 150)
-        end
+        if Type == "Ghost" then StrokeObj.Color = Theme.Ghost; Button.TextColor3 = Theme.Ghost
+        elseif Type == "Grab" then StrokeObj.Color = Theme.Accent; Button.TextColor3 = Theme.Accent
+        elseif Type == "Desync" then StrokeObj.Color = Color3.fromRGB(0, 255, 150); Button.TextColor3 = Color3.fromRGB(0, 255, 150) end
 
-        -- Loop de Tween (Pulsação) exatamente como o original
         task.spawn(function()
             while Frame.Parent do
                 if Frame.Visible then
-                    local t1 = TweenService:Create(StrokeObj, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Transparency = 0.4})
-                    t1:Play()
-                    t1.Completed:Wait()
-                    local t2 = TweenService:Create(StrokeObj, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Transparency = 0})
-                    t2:Play()
-                    t2.Completed:Wait()
+                    local t1 = TweenService:Create(StrokeObj, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Transparency = 0.4}):Play()
+                    task.wait(0.8)
+                    local t2 = TweenService:Create(StrokeObj, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Transparency = 0}):Play()
+                    task.wait(0.8)
                 else
                     task.wait(1)
                 end
@@ -626,20 +632,58 @@ function NexusLibrary:CreateFloatingButton(Text, Type, Position, ThemeName, Call
     end
 
     if Callback then
-        Button.MouseButton1Click:Connect(function()
-            NexusLibrary:PlaySound()
-            Callback(Button, StrokeObj)
-        end)
+        Button.MouseButton1Click:Connect(function() NexusLibrary:PlaySound(); Callback(Button, StrokeObj) end)
     end
 
     local FloatingAPI = {}
     function FloatingAPI:SetVisible(state) Frame.Visible = state end
     function FloatingAPI:SetText(text) Button.Text = text end
-    function FloatingAPI:SetColor(color) 
-        Button.TextColor3 = color
-        StrokeObj.Color = color
-    end
+    function FloatingAPI:SetColor(color) Button.TextColor3 = color; StrokeObj.Color = color end
     return FloatingAPI
+end
+
+-- ==============================================================================
+-- SAVE / LOAD POSITIONS (CONFIG SYSTEM NATIVO)
+-- ==============================================================================
+function NexusLibrary:SavePositions(FileName)
+    if not writefile then return end
+    local DataToSave = {}
+    
+    for Key, Frame in pairs(NexusLibrary.SavedElements) do
+        if Frame and Frame.Position then
+            DataToSave[Key] = {
+                XScale = Frame.Position.X.Scale,
+                XOffset = Frame.Position.X.Offset,
+                YScale = Frame.Position.Y.Scale,
+                YOffset = Frame.Position.Y.Offset
+            }
+        end
+    end
+    
+    local success, encoded = pcall(function() return HttpService:JSONEncode(DataToSave) end)
+    if success then
+        writefile(FileName .. ".json", encoded)
+        NexusLibrary:Notify("Sucesso!", "Posições salvas no arquivo: " .. FileName, 3)
+    end
+end
+
+function NexusLibrary:LoadPositions(FileName)
+    if not readfile or not isfile or not isfile(FileName .. ".json") then return end
+    
+    local success, data = pcall(function() return HttpService:JSONDecode(readfile(FileName .. ".json")) end)
+    if success and type(data) == "table" then
+        for Key, PosData in pairs(data) do
+            if NexusLibrary.SavedElements[Key] then
+                NexusLibrary.SavedElements[Key].Position = UDim2.new(
+                    PosData.XScale, PosData.XOffset,
+                    PosData.YScale, PosData.YOffset
+                )
+            end
+        end
+        NexusLibrary:Notify("Sucesso!", "Posições carregadas de: " .. FileName, 3)
+    else
+        NexusLibrary:Notify("Erro", "Não foi possível carregar a configuração.", 3)
+    end
 end
 
 return NexusLibrary
