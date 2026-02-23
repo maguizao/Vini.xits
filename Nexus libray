@@ -1,4 +1,4 @@
--- Nexus Library v1.1 -- A clean GUI framework for Nexus Hub MM2
+-- Nexus Library v1.2 -- A clean GUI framework for Nexus Hub MM2 (Includes mm2v5 Dropdown & Floating Buttons)
 local NexusLibrary = {}
 
 -- Services
@@ -71,55 +71,6 @@ local function Center(Inst)
     Inst.Position = UDim2.new(0.5, 0, 0.5, 0)
 end
 
-local function CenterX(Inst)
-    Inst.AnchorPoint = Vector2.new(0.5, 0)
-    Inst.Position = UDim2.new(0.5, 0, 0, 0)
-end
-
-local function CenterY(Inst)
-    Inst.AnchorPoint = Vector2.new(0, 0.5)
-    Inst.Position = UDim2.new(0, 0, 0.5, 0)
-end
-
-local function Pad(Inst)
-    local Padding = Instance.new("UIPadding")
-    Padding.Parent = Inst
-    local Tree = {}
-    function Tree:A(X, Y)
-        X = X or 0
-        Y = Y or 0
-        Padding.PaddingLeft = UDim.new(X, Y)
-        Padding.PaddingRight = UDim.new(X, Y)
-        Padding.PaddingTop = UDim.new(X, Y)
-        Padding.PaddingBottom = UDim.new(X, Y)
-        return Tree
-    end
-    function Tree:L(X, Y)
-        Padding.PaddingLeft = UDim.new(X or 0, Y or 0)
-        return Tree
-    end
-    function Tree:R(X, Y)
-        Padding.PaddingRight = UDim.new(X or 0, Y or 0)
-        return Tree
-    end
-    function Tree:T(X, Y)
-        Padding.PaddingTop = UDim.new(X or 0, Y or 0)
-        return Tree
-    end
-    function Tree:B(X, Y)
-        Padding.PaddingBottom = UDim.new(X or 0, Y or 0)
-        return Tree
-    end
-    return Tree
-end
-
-local function TextDefault(Inst)
-    Inst.BackgroundTransparency = 1
-    Inst.TextColor3 = Color3.new(1, 1, 1)
-    Inst.TextScaled = true
-    Inst.Font = Enum.Font.GothamBlack
-end
-
 local function Stroke(Inst, Color, Thickness)
     local UIStroke = Instance.new("UIStroke")
     UIStroke.Parent = Inst
@@ -129,13 +80,6 @@ local function Stroke(Inst, Color, Thickness)
     return UIStroke
 end
 
-local function Ratio(Inst, X)
-    local Ratio = Instance.new("UIAspectRatioConstraint")
-    Ratio.Parent = Inst
-    Ratio.AspectRatio = X or 1
-    return Ratio
-end
-
 local function Corner(Inst, Radius)
     local Corner = Instance.new("UICorner")
     Corner.Parent = Inst
@@ -143,73 +87,30 @@ local function Corner(Inst, Radius)
     return Corner
 end
 
--- Make Draggable Function with Corner-Only Drag
-local function MakeDraggableCornersOnly(frame)
+local function MakeDraggable(frame, trigger)
+    trigger = trigger or frame
     local dragging, dragInput, dragStart, startPos
-    local cornerSize = 20
-
-    local function createCornerDetector(position, size)
-        local detector = Instance.new("Frame")
-        detector.Name = "DragCorner_" .. position
-        detector.Size = UDim2.new(0, size, 0, size)
-        detector.BackgroundTransparency = 1
-        detector.ZIndex = frame.ZIndex + 1
-        detector.Parent = frame
-
-        if position == "TopLeft" then
-            detector.Position = UDim2.new(0, 0, 0, 0)
-        elseif position == "TopRight" then
-            detector.Position = UDim2.new(1, -size, 0, 0)
-        elseif position == "BottomLeft" then
-            detector.Position = UDim2.new(0, 0, 1, -size)
-        elseif position == "BottomRight" then
-            detector.Position = UDim2.new(1, -size, 1, -size)
+    trigger.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
         end
-        return detector
-    end
-
-    local topLeftDetector = createCornerDetector("TopLeft", cornerSize)
-    local topRightDetector = createCornerDetector("TopRight", cornerSize)
-    local bottomLeftDetector = createCornerDetector("BottomLeft", cornerSize)
-    local bottomRightDetector = createCornerDetector("BottomRight", cornerSize)
-
-    local function startDragging(input)
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-
-    local detectors = {topLeftDetector, topRightDetector, bottomLeftDetector, bottomRightDetector}
-    for _, detector in ipairs(detectors) do
-        detector.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                startDragging(input)
-            end
-        end)
-    end
-
-    for _, detector in ipairs(detectors) do
-        detector.InputChanged:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-                dragInput = input
-            end
-        end)
-    end
-
+    end)
+    trigger.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input == dragInput then
             local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
 end
@@ -225,16 +126,41 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
     Screen.DisplayOrder = 1e6
     Screen.Name = "NexusHub_" .. HttpService:GenerateGUID(false)
 
+    -- Toggle Button (O Botão flutuante "N" do mm2v5)
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Name = "ToggleButton"
+    ToggleButton.Parent = Screen
+    ToggleButton.Size = UDim2.new(0, 40, 0, 40)
+    ToggleButton.Position = UDim2.new(0.1, 0, 0.1, 0)
+    ToggleButton.BackgroundColor3 = Theme.Background
+    ToggleButton.Text = "N"
+    ToggleButton.TextColor3 = Theme.Accent
+    ToggleButton.Font = Enum.Font.GothamBold
+    ToggleButton.TextSize = 24
+    ToggleButton.AutoButtonColor = false
+    ToggleButton.ZIndex = 100
+    Corner(ToggleButton, 10)
+    local ToggleStroke = Stroke(ToggleButton, Theme.Accent, 2)
+    MakeDraggable(ToggleButton)
+
     -- Main Frame
     local Frame = Instance.new("Frame")
     Frame.Parent = Screen
     Frame.Size = Size or UDim2.new(0, 400, 0, 320)
-    Frame.BorderSizePixel = 0
     Frame.BackgroundColor3 = Theme.Background
     Frame.Active = true
+    Frame.ClipsDescendants = true
     Center(Frame)
     Corner(Frame, 10)
-    Stroke(Frame, Theme.Accent, 2)
+    local MainStroke = Stroke(Frame, Theme.Accent, 2)
+
+    ToggleButton.MouseButton1Click:Connect(function()
+        Frame.Visible = not Frame.Visible
+        -- Efeito
+        TweenService:Create(ToggleButton, TweenInfo.new(0.1), {Size = UDim2.new(0, 35, 0, 35)}):Play()
+        task.wait(0.1)
+        TweenService:Create(ToggleButton, TweenInfo.new(0.1), {Size = UDim2.new(0, 40, 0, 40)}):Play()
+    end)
 
     -- Sidebar
     local Sidebar = Instance.new("Frame")
@@ -243,48 +169,17 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
     Sidebar.BackgroundColor3 = Theme.Sidebar
     Corner(Sidebar, 10)
 
-    -- Title Frame (Contains Title and Minimize Button)
-    local TitleFrame = Instance.new("Frame")
-    TitleFrame.Parent = Sidebar
-    TitleFrame.Size = UDim2.new(1, 0, 0, 40)
-    TitleFrame.BackgroundTransparency = 1
-
     -- Title Label
     local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Parent = TitleFrame
-    TitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    TitleLabel.Parent = Sidebar
+    TitleLabel.Size = UDim2.new(1, -10, 0, 40)
+    TitleLabel.Position = UDim2.new(0, 10, 0, 0)
     TitleLabel.BackgroundTransparency = 1
     TitleLabel.Text = Title or "NEXUS HUB"
     TitleLabel.TextColor3 = Theme.Accent
     TitleLabel.Font = Enum.Font.GothamBlack
     TitleLabel.TextSize = 14
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-    -- Minimize Button (N button)
-    local MinimizeButton = Instance.new("TextButton")
-    MinimizeButton.Parent = TitleFrame
-    MinimizeButton.Size = UDim2.new(0, 25, 0, 25)
-    MinimizeButton.Position = UDim2.new(1, -30, 0.5, -12.5)
-    MinimizeButton.BackgroundColor3 = Theme.Accent
-    MinimizeButton.Text = "N"
-    MinimizeButton.TextColor3 = Color3.new(1, 1, 1)
-    MinimizeButton.Font = Enum.Font.GothamBlack
-    MinimizeButton.TextSize = 12
-    MinimizeButton.AutoButtonColor = false
-    Corner(MinimizeButton, 4)
-
-    -- Rename GUI Button
-    local RenameButton = Instance.new("TextButton")
-    RenameButton.Parent = TitleFrame
-    RenameButton.Size = UDim2.new(0, 25, 0, 25)
-    RenameButton.Position = UDim2.new(1, -60, 0.5, -12.5)
-    RenameButton.BackgroundColor3 = Theme.Ghost
-    RenameButton.Text = "✎"
-    RenameButton.TextColor3 = Color3.new(1, 1, 1)
-    RenameButton.Font = Enum.Font.GothamBold
-    RenameButton.TextSize = 12
-    RenameButton.AutoButtonColor = false
-    Corner(RenameButton, 4)
 
     -- Content Container
     local ContentContainer = Instance.new("Frame")
@@ -293,140 +188,31 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
     ContentContainer.Position = UDim2.new(0, 110, 0, 10)
     ContentContainer.BackgroundTransparency = 1
 
-    -- Tabs Storage
+    -- Dropdown Menu Container (Placed in Screen so it overlays everything)
+    local DropdownOverlay = Instance.new("Frame")
+    DropdownOverlay.Parent = Screen
+    DropdownOverlay.Size = UDim2.new(1, 0, 1, 0)
+    DropdownOverlay.BackgroundTransparency = 1
+    DropdownOverlay.Visible = false
+    DropdownOverlay.ZIndex = 999
+
     local tabs = {}
     local currentTheme = Theme
-    local minimized = false
-    local originalSize = Frame.Size
-
-    -- Make draggable
-    local function MakeDraggable(frame, trigger)
-        trigger = trigger or frame
-        local dragging, dragInput, dragStart, startPos
-        trigger.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                dragStart = input.Position
-                startPos = frame.Position
-                input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        dragging = false
-                    end
-                end)
-            end
-        end)
-        trigger.InputChanged:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-                dragInput = input
-            end
-        end)
-        UserInputService.InputChanged:Connect(function(input)
-            if dragging and input == dragInput then
-                local delta = input.Position - dragStart
-                frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            end
-        end)
-    end
 
     MakeDraggable(Frame, Sidebar)
 
-    -- Window Object
     local Window = {}
 
-    -- Apply Theme Function
     local function ApplyTheme()
         Frame.BackgroundColor3 = currentTheme.Background
         Sidebar.BackgroundColor3 = currentTheme.Sidebar
         TitleLabel.TextColor3 = currentTheme.Accent
-        MinimizeButton.BackgroundColor3 = currentTheme.Accent
-        RenameButton.BackgroundColor3 = currentTheme.Ghost
-        local mainStroke = Frame:FindFirstChildOfClass("UIStroke")
-        if mainStroke then
-            mainStroke.Color = currentTheme.Accent
-        end
+        MainStroke.Color = currentTheme.Accent
+        ToggleButton.BackgroundColor3 = currentTheme.Background
+        ToggleButton.TextColor3 = currentTheme.Accent
+        ToggleStroke.Color = currentTheme.Accent
     end
 
-    -- Minimize/Maximize Function
-    local function ToggleMinimize()
-        minimized = not minimized
-        if minimized then
-            ContentContainer.Visible = false
-            Frame.Size = UDim2.new(0, 100, 0, Frame.Size.Y.Offset)
-        else
-            ContentContainer.Visible = true
-            Frame.Size = originalSize
-        end
-    end
-
-    -- Rename GUI Function
-    local function RenameGUI()
-        local InputFrame = Instance.new("Frame")
-        InputFrame.Size = UDim2.new(0, 200, 0, 80)
-        InputFrame.BackgroundColor3 = currentTheme.Background
-        InputFrame.Position = UDim2.new(0.5, -100, 0.5, -40)
-        InputFrame.Parent = Screen
-        Corner(InputFrame, 10)
-        Stroke(InputFrame, currentTheme.Accent, 2)
-
-        local Title = Instance.new("TextLabel")
-        Title.Parent = InputFrame
-        Title.Size = UDim2.new(1, 0, 0, 30)
-        Title.BackgroundTransparency = 1
-        Title.Text = "Renomear GUI"
-        Title.TextColor3 = currentTheme.Accent
-        Title.Font = Enum.Font.GothamBlack
-        Title.TextSize = 14
-
-        local InputBox = Instance.new("TextBox")
-        InputBox.Parent = InputFrame
-        InputBox.Size = UDim2.new(0.9, 0, 0, 25)
-        InputBox.Position = UDim2.new(0.05, 0, 0.5, -12.5)
-        InputBox.BackgroundColor3 = currentTheme.InputBG
-        InputBox.Text = TitleLabel.Text
-        InputBox.TextColor3 = currentTheme.Text
-        InputBox.Font = Enum.Font.GothamSemibold
-        InputBox.TextSize = 12
-        Corner(InputBox, 4)
-
-        local ConfirmButton = Instance.new("TextButton")
-        ConfirmButton.Parent = InputFrame
-        ConfirmButton.Size = UDim2.new(0.4, 0, 0, 25)
-        ConfirmButton.Position = UDim2.new(0.05, 0, 0.8, -12.5)
-        ConfirmButton.BackgroundColor3 = currentTheme.Accent
-        ConfirmButton.Text = "Confirmar"
-        ConfirmButton.TextColor3 = Color3.new(1, 1, 1)
-        ConfirmButton.Font = Enum.Font.GothamBold
-        ConfirmButton.TextSize = 12
-        Corner(ConfirmButton, 4)
-
-        local CancelButton = Instance.new("TextButton")
-        CancelButton.Parent = InputFrame
-        CancelButton.Size = UDim2.new(0.4, 0, 0, 25)
-        CancelButton.Position = UDim2.new(0.55, 0, 0.8, -12.5)
-        CancelButton.BackgroundColor3 = currentTheme.ItemBG
-        CancelButton.Text = "Cancelar"
-        CancelButton.TextColor3 = currentTheme.Text
-        CancelButton.Font = Enum.Font.GothamBold
-        CancelButton.TextSize = 12
-        Corner(CancelButton, 4)
-
-        ConfirmButton.MouseButton1Click:Connect(function()
-            if InputBox.Text ~= "" then
-                TitleLabel.Text = InputBox.Text
-            end
-            InputFrame:Destroy()
-        end)
-
-        CancelButton.MouseButton1Click:Connect(function()
-            InputFrame:Destroy()
-        end)
-    end
-
-    -- Button Events
-    MinimizeButton.MouseButton1Click:Connect(ToggleMinimize)
-    RenameButton.MouseButton1Click:Connect(RenameGUI)
-
-    -- Tab Creation
     function Window:Tab(Name)
         local TabBtn = Instance.new("TextButton")
         TabBtn.Size = UDim2.new(1, -10, 0, 30)
@@ -439,28 +225,6 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
         TabBtn.AutoButtonColor = false
         TabBtn.Parent = Sidebar
         Corner(TabBtn, 6)
-
-        -- Rename Tab Button (small button on tab)
-        local RenameTabBtn = Instance.new("TextButton")
-        RenameTabBtn.Size = UDim2.new(0, 20, 0, 20)
-        RenameTabBtn.Position = UDim2.new(1, -25, 0.5, -10)
-        RenameTabBtn.BackgroundColor3 = currentTheme.Ghost
-        RenameTabBtn.Text = "✎"
-        RenameTabBtn.TextColor3 = Color3.new(1, 1, 1)
-        RenameTabBtn.Font = Enum.Font.GothamBold
-        RenameTabBtn.TextSize = 10
-        RenameTabBtn.AutoButtonColor = false
-        RenameTabBtn.Visible = false
-        Corner(RenameTabBtn, 3)
-        RenameTabBtn.Parent = TabBtn
-
-        -- Show rename button on hover
-        TabBtn.MouseEnter:Connect(function()
-            RenameTabBtn.Visible = true
-        end)
-        TabBtn.MouseLeave:Connect(function()
-            RenameTabBtn.Visible = false
-        end)
 
         local TabFrame = Instance.new("ScrollingFrame")
         TabFrame.Parent = ContentContainer
@@ -481,80 +245,10 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
         padding.Parent = TabFrame
         padding.PaddingTop = UDim.new(0, 5)
         padding.PaddingLeft = UDim.new(0, 5)
+        padding.PaddingRight = UDim.new(0, 5)
         padding.PaddingBottom = UDim.new(0, 5)
 
         table.insert(tabs, {Btn = TabBtn, Frame = TabFrame, Name = Name})
-
-        -- Rename Tab Function
-        local function RenameTabFunction()
-            local InputFrame = Instance.new("Frame")
-            InputFrame.Size = UDim2.new(0, 200, 0, 80)
-            InputFrame.BackgroundColor3 = currentTheme.Background
-            InputFrame.Position = UDim2.new(0.5, -100, 0.5, -40)
-            InputFrame.Parent = Screen
-            Corner(InputFrame, 10)
-            Stroke(InputFrame, currentTheme.Accent, 2)
-
-            local Title = Instance.new("TextLabel")
-            Title.Parent = InputFrame
-            Title.Size = UDim2.new(1, 0, 0, 30)
-            Title.BackgroundTransparency = 1
-            Title.Text = "Renomear Aba"
-            Title.TextColor3 = currentTheme.Accent
-            Title.Font = Enum.Font.GothamBlack
-            Title.TextSize = 14
-
-            local InputBox = Instance.new("TextBox")
-            InputBox.Parent = InputFrame
-            InputBox.Size = UDim2.new(0.9, 0, 0, 25)
-            InputBox.Position = UDim2.new(0.05, 0, 0.5, -12.5)
-            InputBox.BackgroundColor3 = currentTheme.InputBG
-            InputBox.Text = TabBtn.Text
-            InputBox.TextColor3 = currentTheme.Text
-            InputBox.Font = Enum.Font.GothamSemibold
-            InputBox.TextSize = 12
-            Corner(InputBox, 4)
-
-            local ConfirmButton = Instance.new("TextButton")
-            ConfirmButton.Parent = InputFrame
-            ConfirmButton.Size = UDim2.new(0.4, 0, 0, 25)
-            ConfirmButton.Position = UDim2.new(0.05, 0, 0.8, -12.5)
-            ConfirmButton.BackgroundColor3 = currentTheme.Accent
-            ConfirmButton.Text = "Confirmar"
-            ConfirmButton.TextColor3 = Color3.new(1, 1, 1)
-            ConfirmButton.Font = Enum.Font.GothamBold
-            ConfirmButton.TextSize = 12
-            Corner(ConfirmButton, 4)
-
-            local CancelButton = Instance.new("TextButton")
-            CancelButton.Parent = InputFrame
-            CancelButton.Size = UDim2.new(0.4, 0, 0, 25)
-            CancelButton.Position = UDim2.new(0.55, 0, 0.8, -12.5)
-            CancelButton.BackgroundColor3 = currentTheme.ItemBG
-            CancelButton.Text = "Cancelar"
-            CancelButton.TextColor3 = currentTheme.Text
-            CancelButton.Font = Enum.Font.GothamBold
-            CancelButton.TextSize = 12
-            Corner(CancelButton, 4)
-
-            ConfirmButton.MouseButton1Click:Connect(function()
-                if InputBox.Text ~= "" then
-                    TabBtn.Text = InputBox.Text
-                    for i, tab in ipairs(tabs) do
-                        if tab.Btn == TabBtn then
-                            tab.Name = InputBox.Text
-                        end
-                    end
-                end
-                InputFrame:Destroy()
-            end)
-
-            CancelButton.MouseButton1Click:Connect(function()
-                InputFrame:Destroy()
-            end)
-        end
-
-        RenameTabBtn.MouseButton1Click:Connect(RenameTabFunction)
 
         TabBtn.MouseButton1Click:Connect(function()
             for _, t in ipairs(tabs) do
@@ -571,25 +265,8 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
             }):Play()
         end)
 
-        -- Tab Object
         local Tab = {}
 
-        -- Rename Tab Method
-        function Tab:Rename(newName)
-            TabBtn.Text = newName
-            for i, tab in ipairs(tabs) do
-                if tab.Btn == TabBtn then
-                    tab.Name = newName
-                end
-            end
-        end
-
-        -- Get Tab Name Method
-        function Tab:GetName()
-            return TabBtn.Text
-        end
-
-        -- Section
         function Tab:Section(Text)
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -10, 0, 20)
@@ -602,10 +279,9 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
             Label.Parent = TabFrame
         end
 
-        -- Button
         function Tab:Button(Text, Callback)
             local ButtonFrame = Instance.new("Frame")
-            ButtonFrame.Size = UDim2.new(1, -10, 0, 32)
+            ButtonFrame.Size = UDim2.new(1, 0, 0, 32)
             ButtonFrame.BackgroundColor3 = currentTheme.ItemBG
             ButtonFrame.Parent = TabFrame
             Corner(ButtonFrame, 6)
@@ -620,23 +296,16 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
             Btn.Parent = ButtonFrame
 
             Btn.MouseButton1Click:Connect(function()
-                TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {
-                    BackgroundColor3 = currentTheme.AccentDark
-                }):Play()
+                TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {BackgroundColor3 = currentTheme.AccentDark}):Play()
                 task.wait(0.1)
-                TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {
-                    BackgroundColor3 = currentTheme.ItemBG
-                }):Play()
-                if Callback then
-                    Callback(Btn, ButtonFrame)
-                end
+                TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {BackgroundColor3 = currentTheme.ItemBG}):Play()
+                if Callback then Callback(Btn, ButtonFrame) end
             end)
         end
 
-        -- Toggle
         function Tab:Toggle(Text, Default, Callback)
             local ToggleFrame = Instance.new("Frame")
-            ToggleFrame.Size = UDim2.new(1, -10, 0, 32)
+            ToggleFrame.Size = UDim2.new(1, 0, 0, 32)
             ToggleFrame.BackgroundColor3 = currentTheme.ItemBG
             ToggleFrame.Parent = TabFrame
             Corner(ToggleFrame, 6)
@@ -672,163 +341,21 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
                 TweenService:Create(Indicator, TweenInfo.new(0.3), {
                     BackgroundColor3 = toggled and currentTheme.Accent or Color3.fromRGB(60, 60, 60)
                 }):Play()
-                if Callback then
-                    Callback(toggled)
-                end
-            end)
-
-            local ToggleObject = {}
-            function ToggleObject:Set(State)
-                toggled = State
-                Indicator.BackgroundColor3 = toggled and currentTheme.Accent or Color3.fromRGB(60, 60, 60)
-                if Callback then
-                    Callback(toggled)
-                end
-            end
-            return ToggleObject
-        end
-
-        -- Input
-        function Tab:Input(Text, Placeholder, DefaultVal, Callback)
-            local InputFrame = Instance.new("Frame")
-            InputFrame.Size = UDim2.new(1, -10, 0, 32)
-            InputFrame.BackgroundColor3 = currentTheme.ItemBG
-            InputFrame.Parent = TabFrame
-            Corner(InputFrame, 6)
-
-            local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(0.5, 0, 1, 0)
-            Label.Position = UDim2.new(0, 8, 0, 0)
-            Label.BackgroundTransparency = 1
-            Label.Text = Text
-            Label.TextColor3 = currentTheme.Text
-            Label.Font = Enum.Font.GothamSemibold
-            Label.TextSize = 12
-            Label.TextXAlignment = Enum.TextXAlignment.Left
-            Label.Parent = InputFrame
-
-            local Box = Instance.new("TextBox")
-            Box.Size = UDim2.new(0.4, 0, 0.7, 0)
-            Box.Position = UDim2.new(0.55, 0, 0.15, 0)
-            Box.BackgroundColor3 = currentTheme.InputBG
-            Box.Text = DefaultVal or ""
-            Box.PlaceholderText = Placeholder
-            Box.TextColor3 = currentTheme.Accent
-            Box.Font = Enum.Font.GothamBold
-            Box.TextSize = 11
-            Box.Parent = InputFrame
-            Corner(Box, 4)
-
-            local BoxStroke = Stroke(Box, Color3.fromRGB(50, 50, 60), 1)
-            Box.Focused:Connect(function()
-                TweenService:Create(BoxStroke, TweenInfo.new(0.2), {
-                    Color = currentTheme.Accent
-                }):Play()
-            end)
-            Box.FocusLost:Connect(function()
-                TweenService:Create(BoxStroke, TweenInfo.new(0.2), {
-                    Color = Color3.fromRGB(50, 50, 60)
-                }):Play()
-                if Callback then
-                    Callback(Box.Text)
-                end
+                if Callback then Callback(toggled) end
             end)
         end
 
-        -- Slider
-        function Tab:Slider(Text, Min, Max, Default, Callback)
-            local SliderFrame = Instance.new("Frame")
-            SliderFrame.Size = UDim2.new(1, -10, 0, 40)
-            SliderFrame.BackgroundColor3 = currentTheme.ItemBG
-            SliderFrame.Parent = TabFrame
-            Corner(SliderFrame, 6)
-
-            local Label = Instance.new("TextLabel")
-            Label.Parent = SliderFrame
-            Label.Size = UDim2.new(1, -10, 0, 20)
-            Label.Position = UDim2.new(0, 5, 0, 0)
-            Label.BackgroundTransparency = 1
-            Label.Text = Text .. ": " .. Default
-            Label.TextColor3 = currentTheme.Text
-            Label.Font = Enum.Font.GothamSemibold
-            Label.TextSize = 12
-            Label.TextXAlignment = Enum.TextXAlignment.Left
-
-            local SliderBar = Instance.new("Frame")
-            SliderBar.Parent = SliderFrame
-            SliderBar.Size = UDim2.new(1, -10, 0, 5)
-            SliderBar.Position = UDim2.new(0, 5, 0, 25)
-            SliderBar.BackgroundColor3 = currentTheme.InputBG
-            Corner(SliderBar, 3)
-
-            local SliderFill = Instance.new("Frame")
-            SliderFill.Parent = SliderBar
-            SliderFill.Size = UDim2.new((Default - Min) / (Max - Min), 0, 1, 0)
-            SliderFill.BackgroundColor3 = currentTheme.Accent
-            Corner(SliderFill, 3)
-
-            local SliderButton = Instance.new("TextButton")
-            SliderButton.Parent = SliderBar
-            SliderButton.Size = UDim2.new(0, 10, 2, 0)
-            SliderButton.Position = UDim2.new((Default - Min) / (Max - Min), -5, 0.5, 0)
-            SliderButton.AnchorPoint = Vector2.new(0, 0.5)
-            SliderButton.BackgroundColor3 = Color3.new(1, 1, 1)
-            SliderButton.Text = ""
-            Corner(SliderButton, 5)
-            Stroke(SliderButton, Color3.new(0, 0, 0), 1)
-
-            local dragging = false
-            local value = Default
-
-            local function updateValue(newValue)
-                newValue = math.clamp(newValue, Min, Max)
-                value = newValue
-                SliderFill.Size = UDim2.new((value - Min) / (Max - Min), 0, 1, 0)
-                SliderButton.Position = UDim2.new((value - Min) / (Max - Min), -5, 0.5, 0)
-                Label.Text = Text .. ": " .. string.format("%.2f", value)
-                if Callback then
-                    Callback(value)
-                end
-            end
-
-            SliderButton.MouseButton1Down:Connect(function()
-                dragging = true
-            end)
-
-            UserInputService.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    dragging = false
-                end
-            end)
-
-            SliderBar.MouseButton1Down:Connect(function(x, y)
-                local relativeX = x - SliderBar.AbsolutePosition.X
-                local percentage = math.clamp(relativeX / SliderBar.AbsoluteSize.X, 0, 1)
-                updateValue(Min + (Max - Min) * percentage)
-            end)
-
-            UserInputService.InputChanged:Connect(function(input)
-                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                    local relativeX = input.Position.X - SliderBar.AbsolutePosition.X
-                    local percentage = math.clamp(relativeX / SliderBar.AbsoluteSize.X, 0, 1)
-                    updateValue(Min + (Max - Min) * percentage)
-                end
-            end)
-
-            updateValue(Default)
-        end
-
-        -- Dropdown
+        -- MM2V5 STYLE DROPDOWN (Doesn't clip)
         function Tab:Dropdown(Text, Options, Default, Callback)
             local DropdownFrame = Instance.new("Frame")
-            DropdownFrame.Size = UDim2.new(1, -10, 0, 32)
+            DropdownFrame.Size = UDim2.new(1, 0, 0, 32)
             DropdownFrame.BackgroundColor3 = currentTheme.ItemBG
             DropdownFrame.Parent = TabFrame
             Corner(DropdownFrame, 6)
 
             local Label = Instance.new("TextLabel")
             Label.Parent = DropdownFrame
-            Label.Size = UDim2.new(0.7, 0, 1, 0)
+            Label.Size = UDim2.new(0.5, 0, 1, 0)
             Label.Position = UDim2.new(0, 8, 0, 0)
             Label.BackgroundTransparency = 1
             Label.Text = Text
@@ -839,71 +366,93 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
 
             local DropdownButton = Instance.new("TextButton")
             DropdownButton.Parent = DropdownFrame
-            DropdownButton.Size = UDim2.new(0.25, 0, 0.7, 0)
-            DropdownButton.Position = UDim2.new(0.75, -5, 0.15, 0)
+            DropdownButton.Size = UDim2.new(0.4, 0, 0.7, 0)
+            DropdownButton.Position = UDim2.new(0.55, 0, 0.15, 0)
             DropdownButton.BackgroundColor3 = currentTheme.InputBG
-            DropdownButton.Text = Default or Options[1]
+            DropdownButton.Text = Default or Options[1] or "Select"
             DropdownButton.TextColor3 = currentTheme.Accent
             DropdownButton.Font = Enum.Font.GothamBold
             DropdownButton.TextSize = 11
             Corner(DropdownButton, 4)
 
             local DropdownMenu = Instance.new("ScrollingFrame")
-            DropdownMenu.Parent = DropdownFrame
-            DropdownMenu.Size = UDim2.new(0.25, 0, 0, 0)
-            DropdownMenu.Position = UDim2.new(0.75, -5, 1, 2)
+            DropdownMenu.Parent = DropdownOverlay
             DropdownMenu.BackgroundColor3 = currentTheme.ItemBG
             DropdownMenu.Visible = false
+            DropdownMenu.ZIndex = 1000
             DropdownMenu.AutomaticCanvasSize = Enum.AutomaticSize.Y
             DropdownMenu.CanvasSize = UDim2.new(0, 0, 0, 0)
             DropdownMenu.ScrollBarThickness = 2
             DropdownMenu.ScrollBarImageColor3 = currentTheme.Accent
             Corner(DropdownMenu, 4)
+            Stroke(DropdownMenu, currentTheme.Accent, 1)
 
             local DropdownLayout = Instance.new("UIListLayout")
             DropdownLayout.Parent = DropdownMenu
 
-            for _, option in pairs(Options) do
-                local OptionButton = Instance.new("TextButton")
-                OptionButton.Parent = DropdownMenu
-                OptionButton.Size = UDim2.new(1, 0, 0, 25)
-                OptionButton.BackgroundTransparency = 1
-                OptionButton.Text = option
-                OptionButton.TextColor3 = currentTheme.Text
-                OptionButton.Font = Enum.Font.GothamSemibold
-                OptionButton.TextSize = 11
-                OptionButton.MouseButton1Click:Connect(function()
-                    DropdownButton.Text = option
-                    DropdownMenu.Visible = false
-                    if Callback then
-                        Callback(option)
-                    end
-                end)
-                OptionButton.MouseEnter:Connect(function()
-                    OptionButton.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-                end)
-                OptionButton.MouseLeave:Connect(function()
-                    OptionButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-                end)
+            local function UpdateOptions()
+                for _, child in ipairs(DropdownMenu:GetChildren()) do
+                    if child:IsA("TextButton") then child:Destroy() end
+                end
+                for _, option in ipairs(Options) do
+                    local OptionButton = Instance.new("TextButton")
+                    OptionButton.Parent = DropdownMenu
+                    OptionButton.Size = UDim2.new(1, 0, 0, 25)
+                    OptionButton.BackgroundTransparency = 1
+                    OptionButton.Text = option
+                    OptionButton.TextColor3 = currentTheme.Text
+                    OptionButton.Font = Enum.Font.GothamSemibold
+                    OptionButton.TextSize = 11
+                    OptionButton.ZIndex = 1001
+                    OptionButton.MouseButton1Click:Connect(function()
+                        DropdownButton.Text = option
+                        DropdownMenu.Visible = false
+                        DropdownOverlay.Visible = false
+                        if Callback then Callback(option) end
+                    end)
+                    OptionButton.MouseEnter:Connect(function()
+                        OptionButton.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+                        OptionButton.BackgroundTransparency = 0
+                    end)
+                    OptionButton.MouseLeave:Connect(function()
+                        OptionButton.BackgroundTransparency = 1
+                    end)
+                end
             end
+            UpdateOptions()
 
             DropdownButton.MouseButton1Click:Connect(function()
-                DropdownMenu.Visible = not DropdownMenu.Visible
                 if DropdownMenu.Visible then
-                    DropdownMenu.Size = UDim2.new(0.25, 0, 0, math.min(#Options * 25, 100))
+                    DropdownMenu.Visible = false
+                    DropdownOverlay.Visible = false
+                else
+                    DropdownOverlay.Visible = true
+                    DropdownMenu.Visible = true
+                    
+                    -- Calcula a posição para abrir fora da UI sem cortar
+                    local absPos = DropdownButton.AbsolutePosition
+                    local absSize = DropdownButton.AbsoluteSize
+                    DropdownMenu.Position = UDim2.new(0, absPos.X, 0, absPos.Y + absSize.Y + 2)
+                    DropdownMenu.Size = UDim2.new(0, absSize.X, 0, math.min(#Options * 25, 120))
                 end
             end)
 
-            UserInputService.InputBegan:Connect(function(input)
+            -- Fechar ao clicar fora
+            DropdownOverlay.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    if not DropdownButton:IsDescendantOf(input.Target) and not DropdownMenu:IsDescendantOf(input.Target) then
-                        DropdownMenu.Visible = false
-                    end
+                    DropdownMenu.Visible = false
+                    DropdownOverlay.Visible = false
                 end
             end)
+
+            local DropdownObj = {}
+            function DropdownObj:Refresh(NewOptions)
+                Options = NewOptions
+                UpdateOptions()
+            end
+            return DropdownObj
         end
 
-        -- Set first tab as active
         if #tabs == 1 then
             TabFrame.Visible = true
             TabBtn.TextColor3 = currentTheme.Text
@@ -913,7 +462,6 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
         return Tab
     end
 
-    -- Window Methods
     function Window:SetTheme(ThemeName)
         if NexusLibrary.Themes[ThemeName] then
             currentTheme = NexusLibrary.Themes[ThemeName]
@@ -921,155 +469,15 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
         end
     end
 
-    function Window:Rename(newTitle)
-        if newTitle and type(newTitle) == "string" then
-            TitleLabel.Text = newTitle
-        end
-    end
-
-    function Window:GetTitle()
-        return TitleLabel.Text
-    end
-
-    function Window:Minimize()
-        ToggleMinimize()
-    end
-
-    function Window:Destroy()
-        Screen:Destroy()
-    end
-
-    function Window:Hide()
-        Screen.Enabled = false
-    end
-
-    function Window:Show()
-        Screen.Enabled = true
-    end
-
-    function Window:GetScreen()
-        return Screen
-    end
-
-    function Window:GetFrame()
-        return Frame
-    end
+    function Window:GetScreen() return Screen end
 
     return Window
 end
 
--- Notification System
-function NexusLibrary:Notify(Title, Text, Duration)
-    Duration = Duration or 3
-    local NotifyContainer = Instance.new("ScreenGui")
-    NotifyContainer.Name = "NexusNotifyContainer"
-    NotifyContainer.Parent = CoreGui
-    NotifyContainer.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    NotifyContainer.IgnoreGuiInset = true
-
-    local NotifyList = Instance.new("Frame")
-    NotifyList.Size = UDim2.new(0, 300, 1, 0)
-    NotifyList.AnchorPoint = Vector2.new(1, 0)
-    NotifyList.Position = UDim2.new(1, -20, 0.1, 0)
-    NotifyList.BackgroundTransparency = 1
-    NotifyList.Parent = NotifyContainer
-
-    local NotifyLayout = Instance.new("UIListLayout")
-    NotifyLayout.Parent = NotifyList
-    NotifyLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    NotifyLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-    NotifyLayout.Padding = UDim.new(0, 8)
-
-    local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, 0, 0, 60)
-    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    Frame.BackgroundTransparency = 0.1
-    Frame.BorderSizePixel = 0
-    Frame.Parent = NotifyList
-
-    local Stroke = Instance.new("UIStroke")
-    Stroke.Parent = Frame
-    Stroke.Color = Color3.fromRGB(0, 170, 255)
-    Stroke.Thickness = 1.5
-    Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 6)
-    Corner.Parent = Frame
-
-    local TitleLbl = Instance.new("TextLabel")
-    TitleLbl.Parent = Frame
-    TitleLbl.Size = UDim2.new(1, -10, 0, 20)
-    TitleLbl.Position = UDim2.new(0, 10, 0, 5)
-    TitleLbl.BackgroundTransparency = 1
-    TitleLbl.Text = Title
-    TitleLbl.Font = Enum.Font.GothamBlack
-    TitleLbl.TextColor3 = Color3.fromRGB(0, 170, 255)
-    TitleLbl.TextSize = 14
-    TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
-
-    local MsgLbl = Instance.new("TextLabel")
-    MsgLbl.Parent = Frame
-    MsgLbl.Size = UDim2.new(1, -10, 0, 30)
-    MsgLbl.Position = UDim2.new(0, 10, 0, 25)
-    MsgLbl.BackgroundTransparency = 1
-    MsgLbl.Text = Text
-    MsgLbl.Font = Enum.Font.GothamSemibold
-    MsgLbl.TextColor3 = Color3.new(1, 1, 1)
-    MsgLbl.TextSize = 12
-    MsgLbl.TextXAlignment = Enum.TextXAlignment.Left
-    MsgLbl.TextWrapped = true
-
-    Frame.BackgroundTransparency = 1
-    TitleLbl.TextTransparency = 1
-    MsgLbl.TextTransparency = 1
-    Stroke.Transparency = 1
-
-    TweenService:Create(Frame, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
-    TweenService:Create(TitleLbl, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
-    TweenService:Create(MsgLbl, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
-    TweenService:Create(Stroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
-
-    task.delay(Duration, function()
-        if Frame then
-            TweenService:Create(Frame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-            TweenService:Create(TitleLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-            TweenService:Create(MsgLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-            TweenService:Create(Stroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
-            task.wait(0.3)
-            Frame:Destroy()
-        end
-    end)
-end
-
--- Configuration System
-NexusLibrary.Config = {}
-function NexusLibrary.Config:Load(FileName)
-    local config = {}
-    if readfile and isfile(FileName) then
-        local success, data = pcall(function()
-            return HttpService:JSONDecode(readfile(FileName))
-        end)
-        if success then
-            config = data
-        end
-    end
-    return config
-end
-
-function NexusLibrary.Config:Save(FileName, ConfigTable)
-    if writefile then
-        local success, encoded = pcall(function()
-            return HttpService:JSONEncode(ConfigTable)
-        end)
-        if success then
-            writefile(FileName, encoded)
-        end
-    end
-end
-
--- Create Floating Button
-function NexusLibrary:CreateFloatingButton(Text, Position, Size, ThemeName, Callback)
+-- ==========================================
+-- FLOATING BUTTONS (Grab, Shoot, Invis, etc)
+-- ==========================================
+function NexusLibrary:CreateFloatingButton(Text, Type, Position, ThemeName, Callback)
     local Theme = NexusLibrary.Themes[ThemeName or "Original"]
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Parent = CoreGui
@@ -1078,61 +486,121 @@ function NexusLibrary:CreateFloatingButton(Text, Position, Size, ThemeName, Call
 
     local Frame = Instance.new("Frame")
     Frame.Parent = ScreenGui
-    Frame.Size = Size or UDim2.new(0, 80, 0, 30)
-    Frame.Position = Position or UDim2.new(0.7, 0, 0.5, 0)
+    Frame.Position = Position or UDim2.new(0.5, 0, 0.5, 0)
     Frame.BackgroundColor3 = Theme.Background
+    Frame.BackgroundTransparency = 0.2
     Frame.Visible = true
     Frame.BorderSizePixel = 0
-    Corner(Frame, 6)
-    local FrameStroke = Stroke(Frame, Theme.Accent, 1.5)
-
+    
     local Button = Instance.new("TextButton")
     Button.Parent = Frame
     Button.Size = UDim2.new(1, 0, 1, 0)
     Button.BackgroundTransparency = 1
     Button.Text = Text
-    Button.TextColor3 = Theme.Accent
-    Button.Font = Enum.Font.GothamBlack
-    Button.TextSize = 11
-    Button.AutoButtonColor = true
+    Button.Font = Enum.Font.GothamBold
+    Button.AutoButtonColor = false
 
-    -- Make draggable only by corners
-    MakeDraggableCornersOnly(Frame)
+    local StrokeObj = Stroke(Frame, Theme.Accent, 2)
+    
+    -- Configurações visuais do mm2v5
+    if Type == "Shoot" then
+        Frame.Size = UDim2.new(0, 220, 0, 80)
+        Button.TextSize = 24
+        Button.TextColor3 = Theme.Accent
+        Corner(Frame, 10)
+        
+        local Gradient = Instance.new("UIGradient")
+        Gradient.Parent = StrokeObj
+        Gradient.Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0.00, Theme.Accent),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(1.00, Theme.Accent)
+        }
+        
+        -- Animação do Gradient girando
+        task.spawn(function()
+            while Frame.Parent do
+                if Frame.Visible then
+                    Gradient.Rotation = (Gradient.Rotation + 2) % 360
+                    local t = tick() % 2
+                    local alpha = 0.5 + 0.5 * math.sin(t * math.pi)
+                    Button.TextColor3 = Theme.Accent:Lerp(Color3.fromRGB(255, 255, 255), alpha)
+                end
+                task.wait(0.01)
+            end
+        end)
+
+    else
+        -- Botões pequenos (Grab, Invis, Desync)
+        Frame.Size = UDim2.new(0, 100, 0, 30)
+        Button.TextSize = 12
+        Corner(Frame, 6)
+        
+        if Type == "Ghost" then
+            StrokeObj.Color = Theme.Ghost
+            Button.TextColor3 = Theme.Ghost
+        elseif Type == "Grab" then
+            StrokeObj.Color = Theme.Accent
+            Button.TextColor3 = Theme.Accent
+        elseif Type == "Desync" then
+            StrokeObj.Color = Color3.fromRGB(0, 255, 150)
+            Button.TextColor3 = Color3.fromRGB(0, 255, 150)
+        end
+
+        -- Animação pulsante nas bordas
+        task.spawn(function()
+            while Frame.Parent do
+                if Frame.Visible then
+                    TweenService:Create(StrokeObj, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Transparency = 0.4}):Play()
+                    task.wait(0.8)
+                    TweenService:Create(StrokeObj, TweenInfo.new(0.8, Enum.EasingStyle.Sine), {Transparency = 0}):Play()
+                    task.wait(0.8)
+                else
+                    task.wait(1)
+                end
+            end
+        end)
+    end
+
+    -- Tornar arrastável (Pelo botão todo ou bordas)
+    local dragging, dragStart, startPos
+    Frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Frame.Position
+        end
+    end)
+    Frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
 
     if Callback then
-        Button.MouseButton1Click:Connect(Callback)
-    end
-
-    local FloatingButton = {}
-    function FloatingButton:SetText(NewText)
-        Button.Text = NewText
-    end
-    function FloatingButton:SetColor(Color)
-        Button.TextColor3 = Color
-        FrameStroke.Color = Color
-    end
-    function FloatingButton:SetVisible(Visible)
-        Frame.Visible = Visible
-    end
-    function FloatingButton:Destroy()
-        ScreenGui:Destroy()
-    end
-    return FloatingButton
-end
-
--- Play Sound
-function NexusLibrary:PlaySound(SoundId)
-    task.spawn(function()
-        local s = Instance.new("Sound")
-        s.Name = "NexusClickSound"
-        s.SoundId = SoundId or "rbxassetid://4499400560"
-        s.Volume = 1
-        s.Parent = CoreGui
-        s:Play()
-        s.Ended:Connect(function()
-            s:Destroy()
+        Button.MouseButton1Click:Connect(function()
+            -- Feedback de clique
+            TweenService:Create(Frame, TweenInfo.new(0.1), {Size = UDim2.new(0, Frame.Size.X.Offset - 5, 0, Frame.Size.Y.Offset - 5)}):Play()
+            task.wait(0.1)
+            TweenService:Create(Frame, TweenInfo.new(0.1), {Size = UDim2.new(0, Frame.Size.X.Offset + 5, 0, Frame.Size.Y.Offset + 5)}):Play()
+            Callback(Button, StrokeObj)
         end)
-    end)
+    end
+
+    local FloatingAPI = {}
+    function FloatingAPI:SetVisible(state) Frame.Visible = state end
+    function FloatingAPI:SetText(text) Button.Text = text end
+    function FloatingAPI:SetColor(color) 
+        Button.TextColor3 = color
+        StrokeObj.Color = color
+    end
+    return FloatingAPI
 end
 
 return NexusLibrary
