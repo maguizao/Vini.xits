@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Nexus Library v4.0 - Framework Definitivo (Versão Limpa de Botões Flutuantes)
+-- Nexus Library v4.0 - Framework Definitivo (Com Save Config Customizável)
 -- ==============================================================================
 local NexusLibrary = {}
 
@@ -13,19 +13,19 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 local CustomSoundId = "rbxassetid://4499400560"
 
--- Registo de Elementos para Salvar a Posição
+-- Registro de Elementos para Salvar a Posição
 NexusLibrary.SavedElements = {}
 
 -- ==============================================================================
 -- THEME SYSTEM
 -- ==============================================================================
 NexusLibrary.Themes = {
-    Original = { Background = Color3.fromRGB(15, 15, 20), Sidebar = Color3.fromRGB(20, 20, 25), Accent = Color3.fromRGB(0, 170, 255), AccentDark = Color3.fromRGB(0, 80, 150), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 30, 35), InputBG = Color3.fromRGB(10, 10, 15) },
-    Red = { Background = Color3.fromRGB(20, 15, 15), Sidebar = Color3.fromRGB(25, 20, 20), Accent = Color3.fromRGB(255, 0, 0), AccentDark = Color3.fromRGB(150, 0, 0), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(35, 30, 30), InputBG = Color3.fromRGB(15, 10, 10) },
-    Blue = { Background = Color3.fromRGB(15, 15, 20), Sidebar = Color3.fromRGB(20, 20, 25), Accent = Color3.fromRGB(0, 100, 255), AccentDark = Color3.fromRGB(0, 50, 150), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 30, 35), InputBG = Color3.fromRGB(10, 10, 15) },
-    Verde = { Background = Color3.fromRGB(15, 20, 15), Sidebar = Color3.fromRGB(20, 25, 20), Accent = Color3.fromRGB(0, 255, 0), AccentDark = Color3.fromRGB(0, 150, 0), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 35, 30), InputBG = Color3.fromRGB(10, 15, 10) },
-    Purple = { Background = Color3.fromRGB(20, 15, 20), Sidebar = Color3.fromRGB(25, 20, 25), Accent = Color3.fromRGB(170, 0, 255), AccentDark = Color3.fromRGB(80, 0, 150), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(35, 30, 35), InputBG = Color3.fromRGB(15, 10, 15) },
-    Yellow = { Background = Color3.fromRGB(20, 20, 15), Sidebar = Color3.fromRGB(25, 25, 20), Accent = Color3.fromRGB(255, 255, 0), AccentDark = Color3.fromRGB(150, 150, 0), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(35, 35, 30), InputBG = Color3.fromRGB(15, 15, 10) }
+    Original = { Background = Color3.fromRGB(15, 15, 20), Sidebar = Color3.fromRGB(20, 20, 25), Accent = Color3.fromRGB(0, 170, 255), AccentDark = Color3.fromRGB(0, 80, 150), Ghost = Color3.fromRGB(140, 50, 255), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 30, 35), InputBG = Color3.fromRGB(10, 10, 15) },
+    Red = { Background = Color3.fromRGB(20, 15, 15), Sidebar = Color3.fromRGB(25, 20, 20), Accent = Color3.fromRGB(255, 0, 0), AccentDark = Color3.fromRGB(150, 0, 0), Ghost = Color3.fromRGB(255, 50, 140), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(35, 30, 30), InputBG = Color3.fromRGB(15, 10, 10) },
+    Blue = { Background = Color3.fromRGB(15, 15, 20), Sidebar = Color3.fromRGB(20, 20, 25), Accent = Color3.fromRGB(0, 100, 255), AccentDark = Color3.fromRGB(0, 50, 150), Ghost = Color3.fromRGB(50, 140, 255), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 30, 35), InputBG = Color3.fromRGB(10, 10, 15) },
+    Verde = { Background = Color3.fromRGB(15, 20, 15), Sidebar = Color3.fromRGB(20, 25, 20), Accent = Color3.fromRGB(0, 255, 0), AccentDark = Color3.fromRGB(0, 150, 0), Ghost = Color3.fromRGB(140, 255, 50), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(30, 35, 30), InputBG = Color3.fromRGB(10, 15, 10) },
+    Purple = { Background = Color3.fromRGB(20, 15, 20), Sidebar = Color3.fromRGB(25, 20, 25), Accent = Color3.fromRGB(170, 0, 255), AccentDark = Color3.fromRGB(80, 0, 150), Ghost = Color3.fromRGB(200, 50, 255), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(35, 30, 35), InputBG = Color3.fromRGB(15, 10, 15) },
+    Yellow = { Background = Color3.fromRGB(20, 20, 15), Sidebar = Color3.fromRGB(25, 25, 20), Accent = Color3.fromRGB(255, 255, 0), AccentDark = Color3.fromRGB(150, 150, 0), Ghost = Color3.fromRGB(255, 255, 50), Text = Color3.fromRGB(255, 255, 255), TextDim = Color3.fromRGB(150, 150, 150), ItemBG = Color3.fromRGB(35, 35, 30), InputBG = Color3.fromRGB(15, 15, 10) }
 }
 
 -- ==============================================================================
@@ -100,7 +100,7 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
     Screen.DisplayOrder = 1e6
     Screen.Name = "NexusHub_" .. HttpService:GenerateGUID(false)
 
-    -- Toggle Button ("N" Flutuante para abrir/fechar a interface)
+    -- Toggle Button ("N" Flutuante Original)
     local ToggleButton = Instance.new("TextButton")
     ToggleButton.Name = "ToggleButton"
     ToggleButton.Parent = Screen
@@ -128,7 +128,7 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
     Corner(Frame, 10)
     local MainStroke = Stroke(Frame, Theme.Accent, 2)
 
-    -- Regista os elementos principais para o Save Config
+    -- Registra os elementos principais para o Save Config
     NexusLibrary.SavedElements["MainWindow"] = Frame
     NexusLibrary.SavedElements["ToggleButton"] = ToggleButton
 
@@ -476,7 +476,7 @@ function NexusLibrary:CreateWindow(Title, Size, ThemeName)
 end
 
 -- ==============================================================================
--- NOTIFICAÇÕES
+-- NOTIFICAÇÕES (Empilhando)
 -- ==============================================================================
 function NexusLibrary:Notify(Title, Text, Duration)
     Duration = Duration or 3
@@ -492,6 +492,7 @@ function NexusLibrary:Notify(Title, Text, Duration)
         NotifyList = Instance.new("Frame", NotifyContainer)
         NotifyList.Name = "NotifyList"
         NotifyList.Size = UDim2.new(0, 300, 1, 0)
+        NotifyList.AnchorPoint = Vector2.new(0, 0)
         NotifyList.Position = UDim2.new(0, 20, 0, 0)
         NotifyList.BackgroundTransparency = 1
 
@@ -507,6 +508,8 @@ function NexusLibrary:Notify(Title, Text, Duration)
     Frame.Size = UDim2.new(1, 0, 0, 60)
     Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     Frame.BackgroundTransparency = 0.1
+    Frame.BorderSizePixel = 0
+
     local UIStroke = Stroke(Frame, Color3.fromRGB(0, 170, 255), 1.5)
     Corner(Frame, 6)
 
@@ -531,11 +534,22 @@ function NexusLibrary:Notify(Title, Text, Duration)
     MsgLbl.TextXAlignment = Enum.TextXAlignment.Left
     MsgLbl.TextWrapped = true
 
+    Frame.BackgroundTransparency = 1
+    TitleLbl.TextTransparency = 1
+    MsgLbl.TextTransparency = 1
+    UIStroke.Transparency = 1
+
+    TweenService:Create(Frame, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
+    TweenService:Create(TitleLbl, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    TweenService:Create(MsgLbl, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    TweenService:Create(UIStroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
+
     task.delay(Duration, function()
         if Frame then
             TweenService:Create(Frame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
             TweenService:Create(TitleLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
             TweenService:Create(MsgLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+            TweenService:Create(UIStroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
             task.wait(0.3)
             Frame:Destroy()
         end
@@ -543,32 +557,46 @@ function NexusLibrary:Notify(Title, Text, Duration)
 end
 
 -- ==============================================================================
--- SAVE / LOAD POSITIONS (Apenas Interface Principal)
+-- SAVE / LOAD POSITIONS (CONFIG SYSTEM NATIVO)
 -- ==============================================================================
 function NexusLibrary:SavePositions(FileName)
     if not writefile then return end
     local DataToSave = {}
+    
     for Key, Frame in pairs(NexusLibrary.SavedElements) do
         if Frame and Frame.Position then
             DataToSave[Key] = {
-                XScale = Frame.Position.X.Scale, XOffset = Frame.Position.X.Offset,
-                YScale = Frame.Position.Y.Scale, YOffset = Frame.Position.Y.Offset
+                XScale = Frame.Position.X.Scale,
+                XOffset = Frame.Position.X.Offset,
+                YScale = Frame.Position.Y.Scale,
+                YOffset = Frame.Position.Y.Offset
             }
         end
     end
-    writefile(FileName .. ".json", HttpService:JSONEncode(DataToSave))
-    NexusLibrary:Notify("Sucesso!", "As posições da interface foram guardadas.", 3)
+    
+    local success, encoded = pcall(function() return HttpService:JSONEncode(DataToSave) end)
+    if success then
+        writefile(FileName .. ".json", encoded)
+        NexusLibrary:Notify("Sucesso!", "Posições salvas no arquivo: " .. FileName, 3)
+    end
 end
 
 function NexusLibrary:LoadPositions(FileName)
     if not readfile or not isfile or not isfile(FileName .. ".json") then return end
+    
     local success, data = pcall(function() return HttpService:JSONDecode(readfile(FileName .. ".json")) end)
-    if success then
+    if success and type(data) == "table" then
         for Key, PosData in pairs(data) do
             if NexusLibrary.SavedElements[Key] then
-                NexusLibrary.SavedElements[Key].Position = UDim2.new(PosData.XScale, PosData.XOffset, PosData.YScale, PosData.YOffset)
+                NexusLibrary.SavedElements[Key].Position = UDim2.new(
+                    PosData.XScale, PosData.XOffset,
+                    PosData.YScale, PosData.YOffset
+                )
             end
         end
+        NexusLibrary:Notify("Sucesso!", "Posições carregadas de: " .. FileName, 3)
+    else
+        NexusLibrary:Notify("Erro", "Não foi possível carregar a configuração.", 3)
     end
 end
 
