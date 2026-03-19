@@ -1,0 +1,405 @@
+local Library = {}
+
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+-- ==============================================================================
+-- SISTEMA DE TEMAS
+-- ==============================================================================
+local Themes = {
+    Original = {
+        Background = Color3.fromRGB(15, 15, 20),
+        Sidebar = Color3.fromRGB(20, 20, 25),
+        Accent = Color3.fromRGB(0, 170, 255),
+        AccentDark = Color3.fromRGB(0, 80, 150),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 30, 35),
+        InputBG = Color3.fromRGB(10, 10, 15)
+    },
+    Red = {
+        Background = Color3.fromRGB(20, 15, 15),
+        Sidebar = Color3.fromRGB(25, 20, 20),
+        Accent = Color3.fromRGB(255, 0, 0),
+        AccentDark = Color3.fromRGB(150, 0, 0),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(35, 30, 30),
+        InputBG = Color3.fromRGB(15, 10, 10)
+    },
+    Blue = {
+        Background = Color3.fromRGB(15, 15, 20),
+        Sidebar = Color3.fromRGB(20, 20, 25),
+        Accent = Color3.fromRGB(0, 100, 255),
+        AccentDark = Color3.fromRGB(0, 50, 150),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 30, 35),
+        InputBG = Color3.fromRGB(10, 10, 15)
+    },
+    Verde = {
+        Background = Color3.fromRGB(15, 20, 15),
+        Sidebar = Color3.fromRGB(20, 25, 20),
+        Accent = Color3.fromRGB(0, 255, 0),
+        AccentDark = Color3.fromRGB(0, 150, 0),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 35, 30),
+        InputBG = Color3.fromRGB(10, 15, 10)
+    },
+    Purple = {
+        Background = Color3.fromRGB(20, 15, 20),
+        Sidebar = Color3.fromRGB(25, 20, 25),
+        Accent = Color3.fromRGB(170, 0, 255),
+        AccentDark = Color3.fromRGB(80, 0, 150),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(35, 30, 35),
+        InputBG = Color3.fromRGB(15, 10, 15)
+    },
+    Yellow = {
+        Background = Color3.fromRGB(20, 20, 15),
+        Sidebar = Color3.fromRGB(25, 25, 20),
+        Accent = Color3.fromRGB(255, 255, 0),
+        AccentDark = Color3.fromRGB(150, 150, 0),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(35, 35, 30),
+        InputBG = Color3.fromRGB(15, 15, 10)
+    },
+    Branco = {
+        Background = Color3.fromRGB(240, 240, 240),
+        Sidebar = Color3.fromRGB(220, 220, 220),
+        Accent = Color3.fromRGB(0, 120, 255),
+        AccentDark = Color3.fromRGB(0, 80, 200),
+        Text = Color3.fromRGB(0, 0, 0),
+        TextDim = Color3.fromRGB(80, 80, 80),
+        ItemBG = Color3.fromRGB(200, 200, 200),
+        InputBG = Color3.fromRGB(180, 180, 180)
+    },
+    Preto = {
+        Background = Color3.fromRGB(10, 10, 10),
+        Sidebar = Color3.fromRGB(20, 20, 20),
+        Accent = Color3.fromRGB(255, 255, 255),
+        AccentDark = Color3.fromRGB(150, 150, 150),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 30, 30),
+        InputBG = Color3.fromRGB(20, 20, 20)
+    }
+}
+
+-- ==============================================================================
+-- FUNÇÕES UTILITÁRIAS
+-- ==============================================================================
+local function AddCorner(instance, radius) 
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = instance
+    return corner 
+end
+
+local function AddStroke(instance, color, thickness) 
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color
+    stroke.Thickness = thickness
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = instance
+    return stroke 
+end
+
+local function MakeDraggable(frame, trigger)
+    trigger = trigger or frame
+    local dragging, dragInput, dragStart, startPos
+    trigger.InputBegan:Connect(function(input) 
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function() 
+                if input.UserInputState == Enum.UserInputState.End then 
+                    dragging = false 
+                end 
+            end) 
+        end 
+    end)
+    trigger.InputChanged:Connect(function(input) 
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then 
+            dragInput = input 
+        end 
+    end)
+    UserInputService.InputChanged:Connect(function(input) 
+        if dragging and input == dragInput then 
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end 
+    end)
+end
+
+-- ==============================================================================
+-- CRIAÇÃO DA LIBRARY
+-- ==============================================================================
+function Library:CreateWindow(options)
+    local WindowName = options.Name or "Minha Library"
+    local SelectedTheme = Themes[options.Theme] or Themes.Original
+    
+    local Window = {
+        Tabs = {},
+        CurrentTheme = SelectedTheme
+    }
+    
+    if CoreGui:FindFirstChild(WindowName) then 
+        CoreGui[WindowName]:Destroy() 
+    end
+    
+    local MainGui = Instance.new("ScreenGui")
+    MainGui.Name = WindowName
+    MainGui.Parent = CoreGui
+    MainGui.IgnoreGuiInset = true
+    MainGui.ResetOnSpawn = false
+    MainGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Interface Principal
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 500, 0, 350)
+    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+    MainFrame.BackgroundColor3 = SelectedTheme.Background
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = MainGui
+    AddCorner(MainFrame, 8)
+    local mainStroke = AddStroke(MainFrame, SelectedTheme.Accent, 1)
+    
+    local Sidebar = Instance.new("Frame")
+    Sidebar.Name = "Sidebar"
+    Sidebar.Size = UDim2.new(0, 140, 1, 0)
+    Sidebar.BackgroundColor3 = SelectedTheme.Sidebar
+    Sidebar.BorderSizePixel = 0
+    Sidebar.Parent = MainFrame
+    AddCorner(Sidebar, 8)
+    
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Name = "Title"
+    TitleLabel.Size = UDim2.new(1, 0, 0, 40)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = WindowName
+    TitleLabel.TextColor3 = SelectedTheme.Accent
+    TitleLabel.Font = Enum.Font.GothamBlack
+    TitleLabel.TextSize = 16
+    TitleLabel.Parent = Sidebar
+    
+    local TabContainer = Instance.new("ScrollingFrame")
+    TabContainer.Name = "TabContainer"
+    TabContainer.Size = UDim2.new(1, 0, 1, -50)
+    TabContainer.Position = UDim2.new(0, 0, 0, 50)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.ScrollBarThickness = 2
+    TabContainer.Parent = Sidebar
+    
+    local TabListLayout = Instance.new("UIListLayout")
+    TabListLayout.Parent = TabContainer
+    TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    TabListLayout.Padding = UDim.new(0, 5)
+    
+    local PagesContainer = Instance.new("Frame")
+    PagesContainer.Name = "PagesContainer"
+    PagesContainer.Size = UDim2.new(1, -150, 1, -20)
+    PagesContainer.Position = UDim2.new(0, 150, 0, 10)
+    PagesContainer.BackgroundTransparency = 1
+    PagesContainer.Parent = MainFrame
+    
+    MakeDraggable(MainFrame)
+    
+    Window.MainFrame = MainFrame
+    Window.SelectedTheme = SelectedTheme
+
+    -- Atualizador de Temas (se você quiser mudar o tema em tempo real)
+    function Window:SetTheme(themeName)
+        if Themes[themeName] then
+            self.SelectedTheme = Themes[themeName]
+            local th = self.SelectedTheme
+            
+            MainFrame.BackgroundColor3 = th.Background
+            mainStroke.Color = th.Accent
+            Sidebar.BackgroundColor3 = th.Sidebar
+            TitleLabel.TextColor3 = th.Accent
+            
+            for _, tabData in ipairs(self.Tabs) do
+                tabData.Btn.BackgroundColor3 = th.Background
+                tabData.Btn.TextColor3 = th.TextDim
+                if tabData.Page.Visible then
+                    tabData.Btn.BackgroundColor3 = th.AccentDark
+                    tabData.Btn.TextColor3 = th.Text
+                end
+                
+                for _, el in ipairs(tabData.Elements) do
+                    if el.Type == "Section" then
+                        el.Label.TextColor3 = th.Accent
+                    elseif el.Type == "Toggle" then
+                        el.Btn.BackgroundColor3 = el.State and th.Accent or th.ItemBG
+                        el.Label.TextColor3 = el.State and th.Text or th.TextDim
+                    elseif el.Type == "Button" then
+                        el.Btn.BackgroundColor3 = th.ItemBG
+                        el.Btn.TextColor3 = th.Text
+                    end
+                end
+            end
+        end
+    end
+
+    -- Criação das Abas
+    function Window:CreateTab(tabName)
+        local Tab = {
+            Elements = {}
+        }
+        
+        local TabBtn = Instance.new("TextButton")
+        TabBtn.Size = UDim2.new(1, -10, 0, 30)
+        TabBtn.Position = UDim2.new(0, 5, 0, 0)
+        TabBtn.BackgroundColor3 = SelectedTheme.Background
+        TabBtn.Text = tabName
+        TabBtn.TextColor3 = SelectedTheme.TextDim
+        TabBtn.Font = Enum.Font.GothamSemibold
+        TabBtn.TextSize = 12
+        TabBtn.Parent = TabContainer
+        AddCorner(TabBtn, 6)
+        
+        local Page = Instance.new("ScrollingFrame")
+        Page.Size = UDim2.new(1, 0, 1, 0)
+        Page.BackgroundTransparency = 1
+        Page.ScrollBarThickness = 2
+        Page.Visible = false
+        Page.Parent = PagesContainer
+        
+        local PageLayout = Instance.new("UIListLayout")
+        PageLayout.Parent = Page
+        PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        PageLayout.Padding = UDim.new(0, 8)
+        
+        table.insert(Window.Tabs, {Btn = TabBtn, Page = Page, Elements = Tab.Elements})
+        
+        TabBtn.MouseButton1Click:Connect(function()
+            for _, tData in ipairs(Window.Tabs) do
+                tData.Page.Visible = false
+                tData.Btn.BackgroundColor3 = Window.SelectedTheme.Background
+                tData.Btn.TextColor3 = Window.SelectedTheme.TextDim
+            end
+            Page.Visible = true
+            TabBtn.BackgroundColor3 = Window.SelectedTheme.AccentDark
+            TabBtn.TextColor3 = Window.SelectedTheme.Text
+        end)
+        
+        if #Window.Tabs == 1 then
+            Page.Visible = true
+            TabBtn.BackgroundColor3 = Window.SelectedTheme.AccentDark
+            TabBtn.TextColor3 = Window.SelectedTheme.Text
+        end
+
+        -- Seções, Toggles e Botões
+        function Tab:CreateSection(sectionName)
+            local SectionLabel = Instance.new("TextLabel")
+            SectionLabel.Size = UDim2.new(1, 0, 0, 20)
+            SectionLabel.BackgroundTransparency = 1
+            SectionLabel.Text = sectionName
+            SectionLabel.TextColor3 = Window.SelectedTheme.Accent
+            SectionLabel.Font = Enum.Font.GothamBlack
+            SectionLabel.TextSize = 13
+            SectionLabel.TextXAlignment = Enum.TextXAlignment.Left
+            SectionLabel.Parent = Page
+            
+            table.insert(self.Elements, {Type = "Section", Label = SectionLabel})
+        end
+
+        function Tab:CreateToggle(toggleName, defaultState, callback)
+            local ToggleElement = {Type = "Toggle", State = defaultState}
+            
+            local ToggleContainer = Instance.new("Frame")
+            ToggleContainer.Size = UDim2.new(1, -10, 0, 30)
+            ToggleContainer.BackgroundTransparency = 1
+            ToggleContainer.Parent = Page
+            
+            local ToggleBtn = Instance.new("TextButton")
+            ToggleBtn.Size = UDim2.new(0, 20, 0, 20)
+            ToggleBtn.Position = UDim2.new(0, 0, 0.5, -10)
+            ToggleBtn.BackgroundColor3 = defaultState and Window.SelectedTheme.Accent or Window.SelectedTheme.ItemBG
+            ToggleBtn.Text = ""
+            ToggleBtn.Parent = ToggleContainer
+            AddCorner(ToggleBtn, 4)
+            
+            local ToggleLabel = Instance.new("TextLabel")
+            ToggleLabel.Size = UDim2.new(1, -30, 1, 0)
+            ToggleLabel.Position = UDim2.new(0, 30, 0, 0)
+            ToggleLabel.BackgroundTransparency = 1
+            ToggleLabel.Text = toggleName
+            ToggleLabel.TextColor3 = defaultState and Window.SelectedTheme.Text or Window.SelectedTheme.TextDim
+            ToggleLabel.Font = Enum.Font.GothamSemibold
+            ToggleLabel.TextSize = 13
+            ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+            ToggleLabel.Parent = ToggleContainer
+            
+            local TriggerBtn = Instance.new("TextButton")
+            TriggerBtn.Size = UDim2.new(1, 0, 1, 0)
+            TriggerBtn.BackgroundTransparency = 1
+            TriggerBtn.Text = ""
+            TriggerBtn.Parent = ToggleContainer
+            
+            ToggleElement.Btn = ToggleBtn
+            ToggleElement.Label = ToggleLabel
+            
+            TriggerBtn.MouseButton1Click:Connect(function()
+                ToggleElement.State = not ToggleElement.State
+                
+                TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {
+                    BackgroundColor3 = ToggleElement.State and Window.SelectedTheme.Accent or Window.SelectedTheme.ItemBG
+                }):Play()
+                
+                TweenService:Create(ToggleLabel, TweenInfo.new(0.2), {
+                    TextColor3 = ToggleElement.State and Window.SelectedTheme.Text or Window.SelectedTheme.TextDim
+                }):Play()
+                
+                if callback then
+                    callback(ToggleElement.State)
+                end
+            end)
+            
+            table.insert(self.Elements, ToggleElement)
+            return ToggleElement
+        end
+
+        function Tab:CreateButton(buttonName, callback)
+            local ButtonElement = {Type = "Button"}
+            
+            local Btn = Instance.new("TextButton")
+            Btn.Size = UDim2.new(1, -10, 0, 30)
+            Btn.BackgroundColor3 = Window.SelectedTheme.ItemBG
+            Btn.Text = buttonName
+            Btn.TextColor3 = Window.SelectedTheme.Text
+            Btn.Font = Enum.Font.GothamSemibold
+            Btn.TextSize = 13
+            Btn.Parent = Page
+            AddCorner(Btn, 6)
+            
+            ButtonElement.Btn = Btn
+            
+            Btn.MouseButton1Click:Connect(function()
+                TweenService:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, -15, 0, 28)}):Play()
+                task.wait(0.1)
+                TweenService:Create(Btn, TweenInfo.new(0.1), {Size = UDim2.new(1, -10, 0, 30)}):Play()
+                
+                if callback then
+                    callback()
+                end
+            end)
+            
+            table.insert(self.Elements, ButtonElement)
+            return ButtonElement
+        end
+
+        return Tab
+    end
+    
+    return Window
+end
+
+return Library
