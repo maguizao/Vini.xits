@@ -1,0 +1,732 @@
+-- NexusUI.lua
+-- A modern UI library inspired by Rayfield, adapted from Nexus Hub MM2.
+
+local NexusUI = {}
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
+
+-- Private variables
+local NexusUIInstances = {}
+local CurrentTheme = "Original"
+local Themes = {
+    Original = {
+        Background = Color3.fromRGB(15, 15, 20),
+        Sidebar = Color3.fromRGB(20, 20, 25),
+        Accent = Color3.fromRGB(0, 170, 255),
+        AccentDark = Color3.fromRGB(0, 80, 150),
+        Ghost = Color3.fromRGB(140, 50, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 30, 35),
+        InputBG = Color3.fromRGB(10, 10, 15)
+    },
+    Red = {
+        Background = Color3.fromRGB(20, 15, 15),
+        Sidebar = Color3.fromRGB(25, 20, 20),
+        Accent = Color3.fromRGB(255, 0, 0),
+        AccentDark = Color3.fromRGB(150, 0, 0),
+        Ghost = Color3.fromRGB(255, 50, 140),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(35, 30, 30),
+        InputBG = Color3.fromRGB(15, 10, 10)
+    },
+    Blue = {
+        Background = Color3.fromRGB(15, 15, 20),
+        Sidebar = Color3.fromRGB(20, 20, 25),
+        Accent = Color3.fromRGB(0, 100, 255),
+        AccentDark = Color3.fromRGB(0, 50, 150),
+        Ghost = Color3.fromRGB(50, 140, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 30, 35),
+        InputBG = Color3.fromRGB(10, 10, 15)
+    },
+    Verde = {
+        Background = Color3.fromRGB(15, 20, 15),
+        Sidebar = Color3.fromRGB(20, 25, 20),
+        Accent = Color3.fromRGB(0, 255, 0),
+        AccentDark = Color3.fromRGB(0, 150, 0),
+        Ghost = Color3.fromRGB(140, 255, 50),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 35, 30),
+        InputBG = Color3.fromRGB(10, 15, 10)
+    },
+    Purple = {
+        Background = Color3.fromRGB(20, 15, 20),
+        Sidebar = Color3.fromRGB(25, 20, 25),
+        Accent = Color3.fromRGB(170, 0, 255),
+        AccentDark = Color3.fromRGB(80, 0, 150),
+        Ghost = Color3.fromRGB(200, 50, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(35, 30, 35),
+        InputBG = Color3.fromRGB(15, 10, 15)
+    },
+    Yellow = {
+        Background = Color3.fromRGB(20, 20, 15),
+        Sidebar = Color3.fromRGB(25, 25, 20),
+        Accent = Color3.fromRGB(255, 255, 0),
+        AccentDark = Color3.fromRGB(150, 150, 0),
+        Ghost = Color3.fromRGB(255, 255, 50),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(35, 35, 30),
+        InputBG = Color3.fromRGB(15, 15, 10)
+    },
+    Branco = {
+        Background = Color3.fromRGB(240, 240, 240),
+        Sidebar = Color3.fromRGB(220, 220, 220),
+        Accent = Color3.fromRGB(0, 120, 255),
+        AccentDark = Color3.fromRGB(0, 80, 200),
+        Ghost = Color3.fromRGB(100, 100, 100),
+        Text = Color3.fromRGB(0, 0, 0),
+        TextDim = Color3.fromRGB(80, 80, 80),
+        ItemBG = Color3.fromRGB(200, 200, 200),
+        InputBG = Color3.fromRGB(180, 180, 180)
+    },
+    Preto = {
+        Background = Color3.fromRGB(10, 10, 10),
+        Sidebar = Color3.fromRGB(20, 20, 20),
+        Accent = Color3.fromRGB(255, 255, 255),
+        AccentDark = Color3.fromRGB(150, 150, 150),
+        Ghost = Color3.fromRGB(100, 100, 100),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 150),
+        ItemBG = Color3.fromRGB(30, 30, 30),
+        InputBG = Color3.fromRGB(20, 20, 20)
+    }
+}
+local CustomSoundId = "rbxassetid://4499400560"
+local NotifyContainer = nil
+local NotifyList = nil
+local notifyOrder = 0
+
+-- Utility functions
+local function AddCorner(instance, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = instance
+    return corner
+end
+
+local function AddStroke(instance, color, thickness)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color
+    stroke.Thickness = thickness
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = instance
+    return stroke
+end
+
+local function PlayClickSound()
+    task.spawn(function()
+        local s = Instance.new("Sound")
+        s.Name = "NexusClickSound"
+        s.SoundId = CustomSoundId
+        s.Volume = 1
+        s.Parent = CoreGui
+        s:Play()
+        s.Ended:Connect(function()
+            s:Destroy()
+        end)
+    end)
+end
+
+local function MakeDraggable(frame, trigger)
+    trigger = trigger or frame
+    local dragging, dragInput, dragStart, startPos
+    trigger.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    trigger.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+local function MakeDraggableCornersOnly(frame)
+    local dragging, dragInput, dragStart, startPos
+    local cornerSize = 20
+
+    local function createCornerDetector(position)
+        local detector = Instance.new("Frame")
+        detector.Name = "DragCorner_" .. position
+        detector.Size = UDim2.new(0, cornerSize, 0, cornerSize)
+        detector.BackgroundTransparency = 1
+        detector.ZIndex = frame.ZIndex + 1
+        detector.Parent = frame
+
+        if position == "TopLeft" then
+            detector.Position = UDim2.new(0, 0, 0, 0)
+        elseif position == "TopRight" then
+            detector.Position = UDim2.new(1, -cornerSize, 0, 0)
+        elseif position == "BottomLeft" then
+            detector.Position = UDim2.new(0, 0, 1, -cornerSize)
+        elseif position == "BottomRight" then
+            detector.Position = UDim2.new(1, -cornerSize, 1, -cornerSize)
+        end
+
+        return detector
+    end
+
+    local detectors = {
+        createCornerDetector("TopLeft"),
+        createCornerDetector("TopRight"),
+        createCornerDetector("BottomLeft"),
+        createCornerDetector("BottomRight")
+    }
+
+    local function startDragging(input)
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+
+    for _, detector in ipairs(detectors) do
+        detector.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                PlayClickSound()
+                startDragging(input)
+            end
+        end)
+
+        detector.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end)
+    end
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- Theme management
+function NexusUI.SetTheme(themeName)
+    if Themes[themeName] then
+        CurrentTheme = themeName
+        -- Apply to all windows
+        for _, window in ipairs(NexusUIInstances) do
+            window:ApplyTheme()
+        end
+        return true
+    end
+    return false
+end
+
+function NexusUI.GetTheme()
+    return Themes[CurrentTheme]
+end
+
+function NexusUI.GetThemeNames()
+    local names = {}
+    for name, _ in pairs(Themes) do
+        table.insert(names, name)
+    end
+    return names
+end
+
+-- Notification system
+local function SetupNotifications()
+    if NotifyContainer then return end
+    NotifyContainer = Instance.new("ScreenGui")
+    NotifyContainer.Name = "NexusNotifyContainer"
+    NotifyContainer.Parent = CoreGui
+    NotifyContainer.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    NotifyContainer.IgnoreGuiInset = true
+
+    NotifyList = Instance.new("Frame")
+    NotifyList.Size = UDim2.new(0, 300, 1, 0)
+    NotifyList.AnchorPoint = Vector2.new(0, 0)
+    NotifyList.Position = UDim2.new(0, 20, 0.8, 0)
+    NotifyList.BackgroundTransparency = 1
+    NotifyList.Parent = NotifyContainer
+
+    local layout = Instance.new("UIListLayout")
+    layout.Parent = NotifyList
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+    layout.Padding = UDim.new(0, 8)
+end
+
+function NexusUI.Notify(title, text, duration)
+    SetupNotifications()
+    notifyOrder = notifyOrder - 1
+
+    local theme = Themes[CurrentTheme]
+
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, 0, 0, 60)
+    Frame.BackgroundColor3 = theme.Sidebar
+    Frame.BackgroundTransparency = 0.1
+    Frame.BorderSizePixel = 0
+    Frame.LayoutOrder = notifyOrder
+    Frame.Parent = NotifyList
+
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Parent = Frame
+    Stroke.Color = theme.Accent
+    Stroke.Thickness = 1.5
+    Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 6)
+    Corner.Parent = Frame
+
+    local TitleLbl = Instance.new("TextLabel")
+    TitleLbl.Parent = Frame
+    TitleLbl.Size = UDim2.new(1, -10, 0, 20)
+    TitleLbl.Position = UDim2.new(0, 10, 0, 5)
+    TitleLbl.BackgroundTransparency = 1
+    TitleLbl.Text = title
+    TitleLbl.Font = Enum.Font.GothamBlack
+    TitleLbl.TextColor3 = theme.Accent
+    TitleLbl.TextSize = 14
+    TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local MsgLbl = Instance.new("TextLabel")
+    MsgLbl.Parent = Frame
+    MsgLbl.Size = UDim2.new(1, -10, 0, 30)
+    MsgLbl.Position = UDim2.new(0, 10, 0, 25)
+    MsgLbl.BackgroundTransparency = 1
+    MsgLbl.Text = text
+    MsgLbl.Font = Enum.Font.GothamSemibold
+    MsgLbl.TextColor3 = theme.Text
+    MsgLbl.TextSize = 12
+    MsgLbl.TextXAlignment = Enum.TextXAlignment.Left
+    MsgLbl.TextWrapped = true
+
+    Frame.BackgroundTransparency = 1
+    TitleLbl.TextTransparency = 1
+    MsgLbl.TextTransparency = 1
+    Stroke.Transparency = 1
+
+    TweenService:Create(Frame, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
+    TweenService:Create(TitleLbl, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    TweenService:Create(MsgLbl, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    TweenService:Create(Stroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
+
+    task.delay(duration or 3, function()
+        if Frame then
+            TweenService:Create(Frame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(TitleLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+            TweenService:Create(MsgLbl, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+            TweenService:Create(Stroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
+            task.wait(0.3)
+            Frame:Destroy()
+        end
+    end)
+end
+
+-- Window class
+local Window = {}
+Window.__index = Window
+
+function Window.new(options)
+    options = options or {}
+    local self = setmetatable({}, Window)
+    self.Name = options.Name or "NexusUI Window"
+    self.Size = options.Size or UDim2.new(0, 400, 0, 320)
+    self.Position = options.Position or UDim2.new(0.5, -200, 0.5, -160)
+    self.Theme = Themes[CurrentTheme]
+    self.Tabs = {}
+    self.TabButtons = {}
+    self.TabFrames = {}
+    self.Destroyed = false
+
+    -- Create GUI
+    self.ScreenGui = Instance.new("ScreenGui")
+    self.ScreenGui.Name = "NexusUI_" .. self.Name
+    self.ScreenGui.Parent = CoreGui
+    self.ScreenGui.ResetOnSpawn = false
+    self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    self.MainFrame = Instance.new("Frame")
+    self.MainFrame.Size = self.Size
+    self.MainFrame.Position = self.Position
+    self.MainFrame.BackgroundColor3 = self.Theme.Background
+    self.MainFrame.Parent = self.ScreenGui
+    self.MainFrame.ClipsDescendants = true
+    AddCorner(self.MainFrame, 10)
+    AddStroke(self.MainFrame, self.Theme.Accent, 2)
+
+    -- Sidebar
+    self.Sidebar = Instance.new("Frame")
+    self.Sidebar.Size = UDim2.new(0, 100, 1, 0)
+    self.Sidebar.BackgroundColor3 = self.Theme.Sidebar
+    self.Sidebar.Parent = self.MainFrame
+    AddCorner(self.Sidebar, 10)
+    MakeDraggable(self.MainFrame, self.Sidebar)
+
+    -- Title
+    self.TitleLabel = Instance.new("TextLabel")
+    self.TitleLabel.Parent = self.Sidebar
+    self.TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+    self.TitleLabel.BackgroundTransparency = 1
+    self.TitleLabel.Text = self.Name
+    self.TitleLabel.TextColor3 = self.Theme.Accent
+    self.TitleLabel.Font = Enum.Font.GothamBlack
+    self.TitleLabel.TextSize = 14
+    self.TitleLabel.LayoutOrder = 0
+
+    -- Content container
+    self.ContentContainer = Instance.new("Frame")
+    self.ContentContainer.Size = UDim2.new(1, -110, 1, -20)
+    self.ContentContainer.Position = UDim2.new(0, 110, 0, 10)
+    self.ContentContainer.BackgroundTransparency = 1
+    self.ContentContainer.Parent = self.MainFrame
+
+    -- Toggle button (optional)
+    if options.ToggleButton then
+        self.ToggleButton = Instance.new("ImageButton")
+        self.ToggleButton.Parent = self.ScreenGui
+        self.ToggleButton.Size = UDim2.new(0, 40, 0, 40)
+        self.ToggleButton.Position = options.ToggleButton.Position or UDim2.new(0.1, 0, 0.1, 0)
+        self.ToggleButton.BackgroundTransparency = 1
+        self.ToggleButton.Image = options.ToggleButton.Image or "rbxassetid://108999865215827"
+        self.ToggleButton.ImageColor3 = Color3.new(1, 1, 1)
+        self.ToggleButton.ScaleType = Enum.ScaleType.Fit
+        self.ToggleButton.ZIndex = 100
+        AddCorner(self.ToggleButton, 10)
+        MakeDraggable(self.ToggleButton, self.ToggleButton)
+
+        self.ToggleButton.MouseButton1Click:Connect(function()
+            PlayClickSound()
+            self.MainFrame.Visible = not self.MainFrame.Visible
+            if self.MainFrame.Visible then
+                self.MainFrame.Size = UDim2.new(0, 0, 0, 0)
+                self.MainFrame.BackgroundTransparency = 1
+                TweenService:Create(self.MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = self.Size, BackgroundTransparency = 0}):Play()
+            end
+        end)
+    end
+
+    table.insert(NexusUIInstances, self)
+    return self
+end
+
+function Window:ApplyTheme()
+    self.Theme = Themes[CurrentTheme]
+    self.MainFrame.BackgroundColor3 = self.Theme.Background
+    local stroke = self.MainFrame:FindFirstChildOfClass("UIStroke")
+    if stroke then stroke.Color = self.Theme.Accent end
+    self.Sidebar.BackgroundColor3 = self.Theme.Sidebar
+    self.TitleLabel.TextColor3 = self.Theme.Accent
+
+    for _, tabBtn in ipairs(self.TabButtons) do
+        tabBtn.BackgroundColor3 = self.Theme.Background
+        tabBtn.TextColor3 = self.Theme.TextDim
+    end
+
+    -- Update visible tab
+    for i, tabFrame in ipairs(self.TabFrames) do
+        if tabFrame.Visible then
+            self.TabButtons[i].BackgroundColor3 = self.Theme.AccentDark
+            self.TabButtons[i].TextColor3 = self.Theme.Text
+        end
+    end
+
+    -- Update all elements inside tabs? That would be heavy. We'll rely on the elements themselves to have their own theme application if needed.
+    -- For simplicity, we assume elements are recreated or have dynamic colors.
+end
+
+function Window:Destroy()
+    self.Destroyed = true
+    self.ScreenGui:Destroy()
+    -- Remove from list
+    for i, w in ipairs(NexusUIInstances) do
+        if w == self then
+            table.remove(NexusUIInstances, i)
+            break
+        end
+    end
+end
+
+function Window:CreateTab(name)
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Size = UDim2.new(1, -10, 0, 30)
+    tabBtn.Position = UDim2.new(0, 5, 0, 50 + (#self.TabButtons * 35))
+    tabBtn.BackgroundColor3 = self.Theme.Background
+    tabBtn.Text = name
+    tabBtn.Font = Enum.Font.GothamSemibold
+    tabBtn.TextColor3 = self.Theme.TextDim
+    tabBtn.TextSize = 12
+    tabBtn.AutoButtonColor = false
+    tabBtn.Parent = self.Sidebar
+    AddCorner(tabBtn, 6)
+
+    local tabFrame = Instance.new("ScrollingFrame")
+    tabFrame.Size = UDim2.new(1, 0, 1, 0)
+    tabFrame.BackgroundTransparency = 1
+    tabFrame.ScrollBarThickness = 2
+    tabFrame.ScrollBarImageColor3 = self.Theme.Accent
+    tabFrame.Visible = false
+    tabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    tabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    tabFrame.Parent = self.ContentContainer
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 6)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = tabFrame
+
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0, 5)
+    padding.PaddingLeft = UDim.new(0, 5)
+    padding.PaddingBottom = UDim.new(0, 5)
+    padding.Parent = tabFrame
+
+    table.insert(self.TabButtons, tabBtn)
+    table.insert(self.TabFrames, tabFrame)
+
+    tabBtn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        for i, btn in ipairs(self.TabButtons) do
+            self.TabFrames[i].Visible = false
+            TweenService:Create(btn, TweenInfo.new(0.3), {TextColor3 = self.Theme.TextDim, BackgroundColor3 = self.Theme.Background}):Play()
+        end
+        tabFrame.Visible = true
+        TweenService:Create(tabBtn, TweenInfo.new(0.3), {TextColor3 = self.Theme.Text, BackgroundColor3 = self.Theme.AccentDark}):Play()
+    end)
+
+    -- If first tab, make it visible
+    if #self.TabButtons == 1 then
+        tabFrame.Visible = true
+        tabBtn.TextColor3 = self.Theme.Text
+        tabBtn.BackgroundColor3 = self.Theme.AccentDark
+    end
+
+    -- Return a table with methods to add elements to this tab
+    local tabAPI = {}
+    function tabAPI:CreateSection(text)
+        local section = Instance.new("TextLabel")
+        section.Size = UDim2.new(1, -10, 0, 20)
+        section.BackgroundTransparency = 1
+        section.Text = text
+        section.TextColor3 = self.Theme.Accent
+        section.Font = Enum.Font.GothamBold
+        section.TextSize = 11
+        section.TextXAlignment = Enum.TextXAlignment.Left
+        section.Parent = tabFrame
+        return section
+    end
+
+    function tabAPI:CreateToggle(text, default, callback)
+        local ToggleFrame = Instance.new("Frame")
+        ToggleFrame.Size = UDim2.new(1, -10, 0, 32)
+        ToggleFrame.BackgroundColor3 = self.Theme.ItemBG
+        ToggleFrame.Parent = tabFrame
+        AddCorner(ToggleFrame, 6)
+
+        local ToggleBtn = Instance.new("TextButton")
+        ToggleBtn.Size = UDim2.new(1, 0, 1, 0)
+        ToggleBtn.BackgroundTransparency = 1
+        ToggleBtn.Text = ""
+        ToggleBtn.Parent = ToggleFrame
+
+        local Label = Instance.new("TextLabel")
+        Label.Size = UDim2.new(0.8, 0, 1, 0)
+        Label.Position = UDim2.new(0, 8, 0, 0)
+        Label.BackgroundTransparency = 1
+        Label.Text = text
+        Label.TextColor3 = self.Theme.Text
+        Label.Font = Enum.Font.GothamSemibold
+        Label.TextSize = 12
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        Label.Parent = ToggleFrame
+
+        local Indicator = Instance.new("Frame")
+        Indicator.Size = UDim2.new(0, 16, 0, 16)
+        Indicator.Position = UDim2.new(1, -24, 0.5, -8)
+        Indicator.BackgroundColor3 = default and self.Theme.Accent or Color3.fromRGB(60, 60, 60)
+        Indicator.Parent = ToggleFrame
+        AddCorner(Indicator, 4)
+
+        local toggled = default
+
+        ToggleBtn.MouseButton1Click:Connect(function()
+            PlayClickSound()
+            toggled = not toggled
+            TweenService:Create(Indicator, TweenInfo.new(0.3), {BackgroundColor3 = toggled and self.Theme.Accent or Color3.fromRGB(60, 60, 60)}):Play()
+            if callback then callback(toggled) end
+        end)
+
+        -- Return a setter
+        return function(state)
+            toggled = state
+            Indicator.BackgroundColor3 = toggled and self.Theme.Accent or Color3.fromRGB(60, 60, 60)
+        end
+    end
+
+    function tabAPI:CreateButton(text, callback)
+        local ButtonFrame = Instance.new("Frame")
+        ButtonFrame.Size = UDim2.new(1, -10, 0, 32)
+        ButtonFrame.BackgroundColor3 = self.Theme.ItemBG
+        ButtonFrame.Parent = tabFrame
+        AddCorner(ButtonFrame, 6)
+
+        local Btn = Instance.new("TextButton")
+        Btn.Size = UDim2.new(1, 0, 1, 0)
+        Btn.BackgroundTransparency = 1
+        Btn.Text = text
+        Btn.TextColor3 = self.Theme.Accent
+        Btn.Font = Enum.Font.GothamBold
+        Btn.TextSize = 12
+        Btn.Parent = ButtonFrame
+
+        Btn.MouseButton1Click:Connect(function()
+            PlayClickSound()
+            TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {BackgroundColor3 = self.Theme.AccentDark}):Play()
+            task.wait(0.1)
+            TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {BackgroundColor3 = self.Theme.ItemBG}):Play()
+            if callback then callback(Btn, ButtonFrame) end
+        end)
+    end
+
+    function tabAPI:CreateInput(text, placeholder, defaultVal, callback)
+        local InputFrame = Instance.new("Frame")
+        InputFrame.Size = UDim2.new(1, -10, 0, 32)
+        InputFrame.BackgroundColor3 = self.Theme.ItemBG
+        InputFrame.Parent = tabFrame
+        AddCorner(InputFrame, 6)
+
+        local Label = Instance.new("TextLabel")
+        Label.Size = UDim2.new(0.5, 0, 1, 0)
+        Label.Position = UDim2.new(0, 8, 0, 0)
+        Label.BackgroundTransparency = 1
+        Label.Text = text
+        Label.TextColor3 = self.Theme.Text
+        Label.Font = Enum.Font.GothamSemibold
+        Label.TextSize = 12
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        Label.Parent = InputFrame
+
+        local Box = Instance.new("TextBox")
+        Box.Size = UDim2.new(0.4, 0, 0.7, 0)
+        Box.Position = UDim2.new(0.55, 0, 0.15, 0)
+        Box.BackgroundColor3 = self.Theme.InputBG
+        Box.Text = defaultVal or ""
+        Box.PlaceholderText = placeholder
+        Box.TextColor3 = self.Theme.Accent
+        Box.Font = Enum.Font.GothamBold
+        Box.TextSize = 11
+        Box.Parent = InputFrame
+        AddCorner(Box, 4)
+
+        local BoxStroke = AddStroke(Box, Color3.fromRGB(50, 50, 60), 1)
+
+        Box.Focused:Connect(function()
+            TweenService:Create(BoxStroke, TweenInfo.new(0.2), {Color = self.Theme.Accent}):Play()
+        end)
+
+        Box.FocusLost:Connect(function()
+            TweenService:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(50, 50, 60)}):Play()
+            if callback then callback(Box.Text) end
+        end)
+    end
+
+    function tabAPI:CreateKeybind(text, defaultVal, callback)
+        local KeybindFrame = Instance.new("Frame")
+        KeybindFrame.Size = UDim2.new(1, -10, 0, 32)
+        KeybindFrame.BackgroundColor3 = self.Theme.ItemBG
+        KeybindFrame.Parent = tabFrame
+        AddCorner(KeybindFrame, 6)
+
+        local Label = Instance.new("TextLabel")
+        Label.Size = UDim2.new(0.6, 0, 1, 0)
+        Label.Position = UDim2.new(0, 8, 0, 0)
+        Label.BackgroundTransparency = 1
+        Label.Text = text
+        Label.TextColor3 = self.Theme.Text
+        Label.Font = Enum.Font.GothamSemibold
+        Label.TextSize = 12
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        Label.Parent = KeybindFrame
+
+        local KeyBtn = Instance.new("TextButton")
+        KeyBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
+        KeyBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
+        KeyBtn.BackgroundColor3 = self.Theme.InputBG
+        KeyBtn.Text = defaultVal
+        KeyBtn.TextColor3 = self.Theme.Accent
+        KeyBtn.Font = Enum.Font.GothamBold
+        KeyBtn.TextSize = 11
+        KeyBtn.Parent = KeybindFrame
+        AddCorner(KeyBtn, 4)
+
+        local KeyStroke = AddStroke(KeyBtn, Color3.fromRGB(50, 50, 60), 1)
+
+        local listening = false
+
+        KeyBtn.MouseButton1Click:Connect(function()
+            PlayClickSound()
+            listening = true
+            KeyBtn.Text = "..."
+            KeyBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+            KeyStroke.Color = Color3.fromRGB(255, 50, 50)
+        end)
+
+        local connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if listening and not gameProcessed then
+                local keyName = tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
+                -- Accept any key, not just gamepad
+                KeyBtn.Text = keyName
+                KeyBtn.TextColor3 = self.Theme.Accent
+                KeyStroke.Color = self.Theme.Accent
+                listening = false
+                if callback then callback(keyName) end
+                connection:Disconnect()
+            end
+        end)
+
+        task.delay(10, function()
+            if listening then
+                listening = false
+                KeyBtn.Text = defaultVal
+                KeyBtn.TextColor3 = self.Theme.Accent
+                KeyStroke.Color = self.Theme.Accent
+                connection:Disconnect()
+            end
+        end)
+    end
+
+    return tabAPI
+end
+
+-- Export library
+return NexusUI
