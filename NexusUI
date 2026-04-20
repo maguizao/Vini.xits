@@ -1,13 +1,12 @@
 -- NexusUILib.lua
 -- Biblioteca genérica de UI para Roblox
--- Baseada na GUI do Nexus Hub MM2
+-- Versão com Save/Load automático, Dropdown e aba SETTINGS integrada
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -17,7 +16,8 @@ local LibraryConfig = {
     DefaultTheme = "Original",
     SaveFileName = "NexusUI_Config.json",
     ClickSoundId = "rbxassetid://4499400560",
-    EnableSaving = true
+    EnableSaving = true,
+    IncludeDefaultSettingsTab = true  -- <-- nova flag
 }
 
 -- Temas pré-definidos (compatíveis com o original)
@@ -126,7 +126,7 @@ local NexusUI = {
     NotifyList = nil,
     SavedPositions = {},
     Config = {},
-    DefaultConfig = {}
+    RegisteredElements = {}
 }
 
 -- Funções utilitárias internas
@@ -188,6 +188,7 @@ local function MakeDraggable(frame, trigger)
                 frame.Position.X.Scale, frame.Position.X.Offset,
                 frame.Position.Y.Scale, frame.Position.Y.Offset
             }
+            SaveUIConfig()
         end
     end)
 end
@@ -262,6 +263,7 @@ local function MakeDraggableCornersOnly(frame)
                 frame.Position.X.Scale, frame.Position.X.Offset,
                 frame.Position.Y.Scale, frame.Position.Y.Offset
             }
+            SaveUIConfig()
         end
     end)
 end
@@ -292,7 +294,7 @@ end
 -- Função pública de notificação
 function NexusUI.Notify(title, text, duration)
     SetupNotifications()
-    local order = - (os.clock() * 1000) -- para ordem decrescente
+    local order = - (os.clock() * 1000)
 
     local Frame = Instance.new("Frame")
     Frame.Size = UDim2.new(1, 0, 0, 60)
@@ -386,13 +388,14 @@ local function ApplyThemeToUI()
     end
 end
 
--- Salvar configurações (posições, tema)
+-- Salvar configurações (posições, tema e elementos registrados)
 local function SaveUIConfig()
     if not LibraryConfig.EnableSaving then return end
     if not writefile then return end
     local config = {
         Theme = LibraryConfig.DefaultTheme,
-        Positions = NexusUI.SavedPositions
+        Positions = NexusUI.SavedPositions,
+        Settings = NexusUI.Config
     }
     local success, encoded = pcall(function()
         return HttpService:JSONEncode(config)
@@ -419,6 +422,9 @@ local function LoadUIConfig()
             end
             if decoded.Positions then
                 NexusUI.SavedPositions = decoded.Positions
+            end
+            if decoded.Settings then
+                NexusUI.Config = decoded.Settings
             end
         end
     end
@@ -447,8 +453,46 @@ function NexusUI.SetWindowTitle(title)
     end
 end
 
--- Criar a janela principal
-function NexusUI.CreateWindow(title, toggleImageId)
+-- Registrar um elemento para auto-save
+local function RegisterElement(id, type, setter, default)
+    NexusUI.RegisteredElements[id] = {type = type, setter = setter, default = default}
+end
+
+-- Aplicar configurações salvas a todos os elementos registrados
+local function ApplySavedSettings()
+    for id, element in pairs(NexusUI.RegisteredElements) do
+        local savedValue = NexusUI.Config[id]
+        if savedValue ~= nil and element.setter then
+            element.setter(savedValue)
+        end
+    end
+end
+
+-- Salvar manualmente todas as configurações
+function NexusUI.SaveAllSettings()
+    SaveUIConfig()
+    NexusUI.Notify("CONFIG", "Settings saved successfully!", 2)
+end
+
+-- Resetar todas as configurações para os valores padrão
+function NexusUI.ResetAllSettings()
+    for id, element in pairs(NexusUI.RegisteredElements) do
+        if element.default ~= nil and element.setter then
+            element.setter(element.default)
+        end
+    end
+    -- Reset também o tema para o padrão (Original)
+    NexusUI.SetTheme("Original")
+    SaveUIConfig()
+    NexusUI.Notify("CONFIG", "Settings reset to default!", 2)
+end
+
+-- Criar a janela principal (agora com aba SETTINGS automática)
+function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings)
+    if includeDefaultSettings == nil then
+        includeDefaultSettings = LibraryConfig.IncludeDefaultSettingsTab
+    end
+
     if NexusUI.ScreenGui then
         NexusUI.ScreenGui:Destroy()
     end
@@ -552,6 +596,23 @@ function NexusUI.CreateWindow(title, toggleImageId)
     }):Play()
 
     ApplyThemeToUI()
+
+    -- Criar aba de configurações padrão, se solicitado
+    if includeDefaultSettings then
+        local settingsTab = NexusUI.CreateTab("⚙ SETTINGS")
+        NexusUI.CreateSection(settingsTab, "CONFIGURATION")
+        NexusUI.CreateButton(settingsTab, "SAVE CONFIGURATION", function()
+            NexusUI.SaveAllSettings()
+        end)
+        NexusUI.CreateButton(settingsTab, "RESET SETTINGS", function()
+            NexusUI.ResetAllSettings()
+        end)
+        NexusUI.CreateSection(settingsTab, "CUSTOM THEME")
+        NexusUI.CreateThemeSelector(settingsTab, function(themeName)
+            NexusUI.SetTheme(themeName)
+        end)
+    end
+
     return NexusUI
 end
 
@@ -628,8 +689,8 @@ function NexusUI.CreateSection(parent, text)
     return label
 end
 
--- Criar um toggle (switch)
-function NexusUI.CreateToggle(parent, text, default, callback)
+-- Criar um toggle (switch) com suporte a auto-save
+function NexusUI.CreateToggle(parent, text, default, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
@@ -661,19 +722,32 @@ function NexusUI.CreateToggle(parent, text, default, callback)
     AddCorner(indicator, 4)
 
     local toggled = default
-    btn.MouseButton1Click:Connect(function()
-        PlayClickSound()
-        toggled = not toggled
-        TweenService:Create(indicator, TweenInfo.new(0.3), {
-            BackgroundColor3 = toggled and NexusUI.CurrentTheme.Accent or Color3.fromRGB(60, 60, 60)
-        }):Play()
-        if callback then callback(toggled) end
-    end)
-
-    return function(state)
+    local setter = function(state)
         toggled = state
         indicator.BackgroundColor3 = toggled and NexusUI.CurrentTheme.Accent or Color3.fromRGB(60, 60, 60)
+        if callback then callback(toggled) end
+        if id then
+            NexusUI.Config[id] = toggled
+            SaveUIConfig()
+        end
     end
+
+    btn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        setter(not toggled)
+    end)
+
+    if id then
+        local saved = NexusUI.Config[id]
+        if saved ~= nil then
+            setter(saved)
+        else
+            NexusUI.Config[id] = default
+        end
+        RegisterElement(id, "toggle", setter, default)
+    end
+
+    return setter
 end
 
 -- Criar um botão
@@ -703,8 +777,8 @@ function NexusUI.CreateButton(parent, text, callback)
     return btn
 end
 
--- Criar um campo de input
-function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback)
+-- Criar um campo de input com suporte a auto-save
+function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
@@ -736,18 +810,42 @@ function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback)
 
     local stroke = AddStroke(box, Color3.fromRGB(50, 50, 60), 1)
 
+    local setter = function(value)
+        box.Text = value
+        if callback then callback(value) end
+        if id then
+            NexusUI.Config[id] = value
+            SaveUIConfig()
+        end
+    end
+
     box.Focused:Connect(function()
         TweenService:Create(stroke, TweenInfo.new(0.2), {Color = NexusUI.CurrentTheme.Accent}):Play()
     end)
     box.FocusLost:Connect(function()
         TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(50, 50, 60)}):Play()
         if callback then callback(box.Text) end
+        if id then
+            NexusUI.Config[id] = box.Text
+            SaveUIConfig()
+        end
     end)
-    return box
+
+    if id then
+        local saved = NexusUI.Config[id]
+        if saved ~= nil then
+            setter(saved)
+        else
+            NexusUI.Config[id] = defaultVal
+        end
+        RegisterElement(id, "input", setter, defaultVal)
+    end
+
+    return box, setter
 end
 
--- Criar um keybind (para teclas do teclado ou gamepad)
-function NexusUI.CreateKeybind(parent, text, defaultKey, callback)
+-- Criar um keybind com suporte a auto-save
+function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
@@ -778,6 +876,15 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback)
 
     local stroke = AddStroke(keyBtn, Color3.fromRGB(50, 50, 60), 1)
 
+    local setter = function(key)
+        keyBtn.Text = key
+        if callback then callback(key) end
+        if id then
+            NexusUI.Config[id] = key
+            SaveUIConfig()
+        end
+    end
+
     local listening = false
     local connection
 
@@ -792,11 +899,8 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback)
         connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if listening and not gameProcessed then
                 local keyName = tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
-                keyBtn.Text = keyName
-                keyBtn.TextColor3 = NexusUI.CurrentTheme.Accent
-                stroke.Color = NexusUI.CurrentTheme.Accent
+                setter(keyName)
                 listening = false
-                if callback then callback(keyName) end
                 connection:Disconnect()
             end
         end)
@@ -812,7 +916,186 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback)
         end)
     end)
 
-    return keyBtn
+    if id then
+        local saved = NexusUI.Config[id]
+        if saved ~= nil then
+            setter(saved)
+        else
+            NexusUI.Config[id] = defaultKey
+        end
+        RegisterElement(id, "keybind", setter, defaultKey)
+    end
+
+    return keyBtn, setter
+end
+
+-- Criar um dropdown (seletor suspenso) com suporte a auto-save
+function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -10, 0, 32)
+    frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+    frame.Parent = parent
+    AddCorner(frame, 6)
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = NexusUI.CurrentTheme.Text
+    label.Font = Enum.Font.GothamSemibold
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+
+    local dropdownBtn = Instance.new("TextButton")
+    dropdownBtn.Size = UDim2.new(0.4, 0, 0.7, 0)
+    dropdownBtn.Position = UDim2.new(0.55, 0, 0.15, 0)
+    dropdownBtn.BackgroundColor3 = NexusUI.CurrentTheme.InputBG
+    dropdownBtn.Text = default or options[1] or ""
+    dropdownBtn.TextColor3 = NexusUI.CurrentTheme.Accent
+    dropdownBtn.Font = Enum.Font.GothamBold
+    dropdownBtn.TextSize = 11
+    dropdownBtn.Parent = frame
+    AddCorner(dropdownBtn, 4)
+    local stroke = AddStroke(dropdownBtn, Color3.fromRGB(50, 50, 60), 1)
+
+    local dropdownList = nil
+    local isOpen = false
+
+    local function closeDropdown()
+        if dropdownList then
+            dropdownList:Destroy()
+            dropdownList = nil
+        end
+        isOpen = false
+    end
+
+    local function openDropdown()
+        if isOpen then return end
+        isOpen = true
+
+        dropdownList = Instance.new("Frame")
+        dropdownList.Size = UDim2.new(0, 150, 0, 30 * #options)
+        dropdownList.Position = UDim2.new(0, dropdownBtn.AbsolutePosition.X - frame.AbsolutePosition.X, 0, 32)
+        dropdownList.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+        dropdownList.BorderSizePixel = 0
+        dropdownList.Parent = frame
+        AddCorner(dropdownList, 6)
+        AddStroke(dropdownList, NexusUI.CurrentTheme.Accent, 1)
+
+        local layout = Instance.new("UIListLayout")
+        layout.Padding = UDim.new(0, 1)
+        layout.Parent = dropdownList
+
+        for _, opt in ipairs(options) do
+            local optBtn = Instance.new("TextButton")
+            optBtn.Size = UDim2.new(1, 0, 0, 30)
+            optBtn.BackgroundColor3 = NexusUI.CurrentTheme.InputBG
+            optBtn.Text = opt
+            optBtn.TextColor3 = NexusUI.CurrentTheme.Text
+            optBtn.Font = Enum.Font.GothamSemibold
+            optBtn.TextSize = 11
+            optBtn.Parent = dropdownList
+            AddCorner(optBtn, 4)
+
+            optBtn.MouseButton1Click:Connect(function()
+                PlayClickSound()
+                dropdownBtn.Text = opt
+                if callback then callback(opt) end
+                if id then
+                    NexusUI.Config[id] = opt
+                    SaveUIConfig()
+                end
+                closeDropdown()
+            end)
+        end
+
+        local function onGlobalClick(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local mousePos = input.Position
+                local btnAbsPos = dropdownBtn.AbsolutePosition
+                local btnSize = dropdownBtn.AbsoluteSize
+                local listAbsPos = dropdownList and dropdownList.AbsolutePosition
+                local listSize = dropdownList and dropdownList.AbsoluteSize
+
+                if not (mousePos.X >= btnAbsPos.X and mousePos.X <= btnAbsPos.X + btnSize.X and
+                        mousePos.Y >= btnAbsPos.Y and mousePos.Y <= btnAbsPos.Y + btnSize.Y) then
+                    if listAbsPos and not (mousePos.X >= listAbsPos.X and mousePos.X <= listAbsPos.X + listSize.X and
+                                           mousePos.Y >= listAbsPos.Y and mousePos.Y <= listAbsPos.Y + listSize.Y) then
+                        closeDropdown()
+                    end
+                end
+            end
+        end
+
+        local connection
+        connection = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                onGlobalClick(input)
+                if not isOpen then
+                    connection:Disconnect()
+                end
+            end
+        end)
+
+        dropdownList.Destroying:Connect(function()
+            if connection then connection:Disconnect() end
+        end)
+    end
+
+    dropdownBtn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        if isOpen then
+            closeDropdown()
+        else
+            openDropdown()
+        end
+    end)
+
+    local function globalCheck(input)
+        if isOpen and input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local mousePos = input.Position
+            local btnAbsPos = dropdownBtn.AbsolutePosition
+            local btnSize = dropdownBtn.AbsoluteSize
+            local listAbsPos = dropdownList and dropdownList.AbsolutePosition
+            local listSize = dropdownList and dropdownList.AbsoluteSize
+
+            if not (mousePos.X >= btnAbsPos.X and mousePos.X <= btnAbsPos.X + btnSize.X and
+                    mousePos.Y >= btnAbsPos.Y and mousePos.Y <= btnAbsPos.Y + btnSize.Y) then
+                if listAbsPos and not (mousePos.X >= listAbsPos.X and mousePos.X <= listAbsPos.X + listSize.X and
+                                       mousePos.Y >= listAbsPos.Y and mousePos.Y <= listAbsPos.Y + listSize.Y) then
+                    closeDropdown()
+                end
+            end
+        end
+    end
+
+    UserInputService.InputBegan:Connect(globalCheck)
+
+    local setter = function(value)
+        if table.find(options, value) then
+            dropdownBtn.Text = value
+            if callback then callback(value) end
+            if id then
+                NexusUI.Config[id] = value
+                SaveUIConfig()
+            end
+        end
+    end
+
+    if id then
+        local saved = NexusUI.Config[id]
+        if saved ~= nil and table.find(options, saved) then
+            setter(saved)
+        else
+            NexusUI.Config[id] = default or options[1]
+            setter(default or options[1])
+        end
+        RegisterElement(id, "dropdown", setter, default or options[1])
+    end
+
+    return setter
 end
 
 -- Criar uma lista de temas para seleção (útil para settings)
@@ -904,5 +1187,11 @@ function NexusUI.Destroy()
     NexusUI.Tabs = {}
     NexusUI.SavedPositions = {}
 end
+
+-- Aplicar configurações salvas automaticamente ao carregar
+task.spawn(function()
+    task.wait(0.1)
+    ApplySavedSettings()
+end)
 
 return NexusUI
