@@ -1,6 +1,6 @@
 -- NexusUILib.lua
 -- Biblioteca genérica de UI para Roblox
--- Versão com suporte a nome de arquivo de configuração personalizável
+-- Com suporte a nome de arquivo de configuração personalizável
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -10,7 +10,7 @@ local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Configurações padrão da biblioteca (agora com nome dinâmico)
+-- Configurações padrão da biblioteca
 local LibraryConfig = {
     WindowTitle = "NEXUS UI",
     DefaultTheme = "Original",
@@ -20,7 +20,7 @@ local LibraryConfig = {
     IncludeDefaultSettingsTab = true
 }
 
--- Temas pré-definidos (mantidos)
+-- Temas pré-definidos (compatíveis com o original)
 local Themes = {
     Original = {
         Background = Color3.fromRGB(15, 15, 20),
@@ -126,25 +126,7 @@ local NexusUI = {
     NotifyList = nil,
     SavedPositions = {},
     Config = {},
-    RegisteredElements = {},
-    -- Expor função para mudar o nome do arquivo de configuração
-    SetConfigFileName = function(newName)
-        if type(newName) == "string" and newName ~= "" then
-            LibraryConfig.SaveFileName = newName
-            -- Recarregar a configuração com o novo nome
-            LoadUIConfig()
-        else
-            warn("NexusUI: Nome de arquivo inválido")
-        end
-    end,
-    -- Permitir leitura/escrita direta do nome
-    GetConfigFileName = function() return LibraryConfig.SaveFileName end,
-    -- Permitir desabilitar salvamento
-    SetSavingEnabled = function(enabled)
-        LibraryConfig.EnableSaving = enabled
-    end,
-    -- Expor a flag de salvamento
-    EnableSaving = true, -- atalho
+    RegisteredElements = {}
 }
 
 -- Funções utilitárias internas
@@ -286,7 +268,7 @@ local function MakeDraggableCornersOnly(frame)
     end)
 end
 
--- Sistema de notificações (genérico)
+-- Sistema de notificações
 local function SetupNotifications()
     if NexusUI.NotifyContainer then return end
     NexusUI.NotifyContainer = Instance.new("ScreenGui")
@@ -309,7 +291,6 @@ local function SetupNotifications()
     layout.Padding = UDim.new(0, 8)
 end
 
--- Função pública de notificação
 function NexusUI.Notify(title, text, duration)
     SetupNotifications()
     local order = - (os.clock() * 1000)
@@ -406,7 +387,7 @@ local function ApplyThemeToUI()
     end
 end
 
--- Salvar configurações (posições, tema e elementos registrados)
+-- Salvar configurações (usa o nome de arquivo atual)
 local function SaveUIConfig()
     if not LibraryConfig.EnableSaving then return end
     if not writefile then return end
@@ -425,6 +406,7 @@ local function SaveUIConfig()
     end
 end
 
+-- Carregar configurações (usa o nome de arquivo atual)
 local function LoadUIConfig()
     if not LibraryConfig.EnableSaving then return end
     if not isfile then return end
@@ -451,6 +433,31 @@ local function LoadUIConfig()
     end
 end
 
+-- Função para definir o nome do arquivo de configuração
+function NexusUI.SetConfigFileName(fileName)
+    if type(fileName) == "string" and fileName ~= "" then
+        LibraryConfig.SaveFileName = fileName
+        -- Recarregar configurações com o novo nome
+        LoadUIConfig()
+        -- Aplicar configurações salvas nos elementos registrados
+        for id, element in pairs(NexusUI.RegisteredElements) do
+            local savedValue = NexusUI.Config[id]
+            if savedValue ~= nil and element.setter then
+                element.setter(savedValue)
+            end
+        end
+        ApplyThemeToUI()
+        NexusUI.Notify("CONFIG", "Arquivo de configuração alterado para: " .. fileName, 3)
+        return true
+    end
+    return false
+end
+
+-- Função para obter o nome atual do arquivo de configuração
+function NexusUI.GetConfigFileName()
+    return LibraryConfig.SaveFileName
+end
+
 -- Função para definir tema publicamente
 function NexusUI.SetTheme(themeName)
     if Themes[themeName] then
@@ -463,7 +470,6 @@ function NexusUI.SetTheme(themeName)
     return false
 end
 
--- Função para mudar o título da janela
 function NexusUI.SetWindowTitle(title)
     LibraryConfig.WindowTitle = title
     if NexusUI.TitleLabel then
@@ -486,29 +492,29 @@ local function ApplySavedSettings()
     end
 end
 
--- Salvar manualmente todas as configurações
 function NexusUI.SaveAllSettings()
     SaveUIConfig()
     NexusUI.Notify("CONFIG", "Settings saved successfully!", 2)
 end
 
--- Resetar todas as configurações para os valores padrão
 function NexusUI.ResetAllSettings()
     for id, element in pairs(NexusUI.RegisteredElements) do
         if element.default ~= nil and element.setter then
             element.setter(element.default)
         end
     end
-    -- Reset também o tema para o padrão (Original)
     NexusUI.SetTheme("Original")
     SaveUIConfig()
     NexusUI.Notify("CONFIG", "Settings reset to default!", 2)
 end
 
--- Criar a janela principal (agora com aba SETTINGS automática)
-function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings)
+-- Criar a janela principal (agora com parâmetro para nome do arquivo de config)
+function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, configFileName)
     if includeDefaultSettings == nil then
         includeDefaultSettings = LibraryConfig.IncludeDefaultSettingsTab
+    end
+    if configFileName then
+        LibraryConfig.SaveFileName = configFileName
     end
 
     if NexusUI.ScreenGui then
@@ -524,7 +530,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings)
     NexusUI.ScreenGui.ResetOnSpawn = false
     NexusUI.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Botão de toggle (menu)
+    -- Botão de toggle
     local toggleBtn = Instance.new("ImageButton")
     toggleBtn.Name = "ToggleButton"
     toggleBtn.Parent = NexusUI.ScreenGui
@@ -607,7 +613,6 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings)
         end
     end)
 
-    -- Animar abertura
     mainFrame.Size = UDim2.new(0, 0, 0, 0)
     TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart), {
         Size = UDim2.new(0, 400, 0, 320)
@@ -693,7 +698,6 @@ function NexusUI.CreateTab(name)
     return tabFrame
 end
 
--- Criar uma seção (título dentro da aba)
 function NexusUI.CreateSection(parent, text)
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -10, 0, 20)
@@ -707,7 +711,7 @@ function NexusUI.CreateSection(parent, text)
     return label
 end
 
--- Criar um toggle (switch) com suporte a auto-save
+-- Toggle com auto-save
 function NexusUI.CreateToggle(parent, text, default, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
@@ -768,7 +772,7 @@ function NexusUI.CreateToggle(parent, text, default, callback, id)
     return setter
 end
 
--- Criar um botão
+-- Botão simples
 function NexusUI.CreateButton(parent, text, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
@@ -795,7 +799,7 @@ function NexusUI.CreateButton(parent, text, callback)
     return btn
 end
 
--- Criar um campo de input com suporte a auto-save
+-- Input com auto-save
 function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
@@ -862,7 +866,7 @@ function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback, id
     return box, setter
 end
 
--- Criar um keybind com suporte a auto-save
+-- Keybind com auto-save
 function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
@@ -947,7 +951,7 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
     return keyBtn, setter
 end
 
--- Criar um dropdown (seletor suspenso) com suporte a auto-save
+-- Dropdown com auto-save
 function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
@@ -1116,7 +1120,7 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
     return setter
 end
 
--- Criar uma lista de temas para seleção (útil para settings)
+-- Seletor de temas
 function NexusUI.CreateThemeSelector(parent, onThemeChanged)
     local themeNames = {"Original", "Red", "Blue", "Verde", "Purple", "Yellow", "Branco", "Preto"}
     local row1 = Instance.new("Frame")
@@ -1194,7 +1198,6 @@ function NexusUI.CreateThemeSelector(parent, onThemeChanged)
     end
 end
 
--- Limpeza da UI (para recriar ou destruir)
 function NexusUI.Destroy()
     if NexusUI.ScreenGui then
         NexusUI.ScreenGui:Destroy()
@@ -1211,8 +1214,5 @@ task.spawn(function()
     task.wait(0.1)
     ApplySavedSettings()
 end)
-
--- Expor a variável EnableSaving para o usuário (atalho)
-NexusUI.EnableSaving = LibraryConfig.EnableSaving
 
 return NexusUI
