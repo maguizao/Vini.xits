@@ -1,6 +1,6 @@
 -- NexusUILib.lua
 -- Biblioteca genérica de UI para Roblox
--- Versão com Save/Load automático, Dropdown e aba SETTINGS integrada
+-- Versão com suporte a nome de arquivo de configuração personalizável
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -10,17 +10,17 @@ local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Configurações padrão da biblioteca
+-- Configurações padrão da biblioteca (agora com nome dinâmico)
 local LibraryConfig = {
     WindowTitle = "NEXUS UI",
     DefaultTheme = "Original",
-    SaveFileName = "NexusUI_Config.json",
+    SaveFileName = "NexusUI_Config.json",  -- padrão, mas pode ser alterado
     ClickSoundId = "rbxassetid://4499400560",
     EnableSaving = true,
-    IncludeDefaultSettingsTab = true  -- <-- nova flag
+    IncludeDefaultSettingsTab = true
 }
 
--- Temas pré-definidos (compatíveis com o original)
+-- Temas pré-definidos (mantidos)
 local Themes = {
     Original = {
         Background = Color3.fromRGB(15, 15, 20),
@@ -126,7 +126,25 @@ local NexusUI = {
     NotifyList = nil,
     SavedPositions = {},
     Config = {},
-    RegisteredElements = {}
+    RegisteredElements = {},
+    -- Expor função para mudar o nome do arquivo de configuração
+    SetConfigFileName = function(newName)
+        if type(newName) == "string" and newName ~= "" then
+            LibraryConfig.SaveFileName = newName
+            -- Recarregar a configuração com o novo nome
+            LoadUIConfig()
+        else
+            warn("NexusUI: Nome de arquivo inválido")
+        end
+    end,
+    -- Permitir leitura/escrita direta do nome
+    GetConfigFileName = function() return LibraryConfig.SaveFileName end,
+    -- Permitir desabilitar salvamento
+    SetSavingEnabled = function(enabled)
+        LibraryConfig.EnableSaving = enabled
+    end,
+    -- Expor a flag de salvamento
+    EnableSaving = true, -- atalho
 }
 
 -- Funções utilitárias internas
@@ -1193,5 +1211,8 @@ task.spawn(function()
     task.wait(0.1)
     ApplySavedSettings()
 end)
+
+-- Expor a variável EnableSaving para o usuário (atalho)
+NexusUI.EnableSaving = LibraryConfig.EnableSaving
 
 return NexusUI
