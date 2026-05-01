@@ -1,6 +1,6 @@
 -- NexusUILib.lua
--- Biblioteca genérica de UI para Roblox
--- Com abas SETTINGS e CREDITS fixas, suporte a créditos com link do YouTube
+-- Biblioteca completa para UI no Roblox
+-- Com suporte a configurações, créditos, temas, salvamento e abas personalizadas
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -10,18 +10,20 @@ local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Configurações padrão da biblioteca
+-- ============================================================================
+-- CONFIGURAÇÕES PADRÃO
+-- ============================================================================
 local LibraryConfig = {
     WindowTitle = "NEXUS UI",
     DefaultTheme = "Original",
     SaveFileName = "NexusUI_Config.json",
     ClickSoundId = "rbxassetid://4499400560",
-    EnableSaving = true,
-    IncludeDefaultSettingsTab = true,
-    IncludeDefaultCreditsTab = true
+    EnableSaving = false
 }
 
--- Temas pré-definidos
+-- ============================================================================
+-- TEMAS
+-- ============================================================================
 local Themes = {
     Original = {
         Background = Color3.fromRGB(15, 15, 20),
@@ -113,7 +115,9 @@ local Themes = {
     }
 }
 
--- Estado interno da biblioteca
+-- ============================================================================
+-- ESTADO INTERNO
+-- ============================================================================
 local NexusUI = {
     ScreenGui = nil,
     MainFrame = nil,
@@ -158,9 +162,7 @@ local function PlayClickSound()
         s.Volume = 1
         s.Parent = NexusUI.ScreenGui or CoreGui
         s:Play()
-        s.Ended:Connect(function()
-            s:Destroy()
-        end)
+        s.Ended:Connect(function() s:Destroy() end)
     end)
 end
 
@@ -302,7 +304,7 @@ function NexusUI.Notify(title, text, duration)
     Frame.Parent = NexusUI.NotifyList
 
     local Stroke = AddStroke(Frame, NexusUI.CurrentTheme.Accent, 1.5)
-    local Corner = AddCorner(Frame, 6)
+    AddCorner(Frame, 6)
 
     local TitleLbl = Instance.new("TextLabel")
     TitleLbl.Parent = Frame
@@ -395,13 +397,9 @@ local function SaveUIConfig()
         Positions = NexusUI.SavedPositions,
         Settings = NexusUI.Config
     }
-    local success, encoded = pcall(function()
-        return HttpService:JSONEncode(config)
-    end)
+    local success, encoded = pcall(function() return HttpService:JSONEncode(config) end)
     if success then
-        pcall(function()
-            writefile(LibraryConfig.SaveFileName, encoded)
-        end)
+        pcall(function() writefile(LibraryConfig.SaveFileName, encoded) end)
     end
 end
 
@@ -410,9 +408,7 @@ local function LoadUIConfig()
     if not isfile then return end
     if isfile(LibraryConfig.SaveFileName) then
         local content = readfile(LibraryConfig.SaveFileName)
-        local success, decoded = pcall(function()
-            return HttpService:JSONDecode(content)
-        end)
+        local success, decoded = pcall(function() return HttpService:JSONDecode(content) end)
         if success and decoded then
             if decoded.Theme and Themes[decoded.Theme] then
                 NexusUI.CurrentTheme = Themes[decoded.Theme]
@@ -500,13 +496,9 @@ function NexusUI.ResetAllSettings()
 end
 
 -- ============================================================================
--- CRIAÇÃO DA JANELA PRINCIPAL E ABAS
+-- CRIAÇÃO DA JANELA PRINCIPAL
 -- ============================================================================
-function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, configFileName, includeDefaultCredits)
-    if includeDefaultSettings == nil then includeDefaultSettings = LibraryConfig.IncludeDefaultSettingsTab end
-    if includeDefaultCredits == nil then includeDefaultCredits = LibraryConfig.IncludeDefaultCreditsTab end
-    if configFileName then LibraryConfig.SaveFileName = configFileName end
-
+function NexusUI.CreateWindow(title, toggleImageId)
     if NexusUI.ScreenGui then NexusUI.ScreenGui:Destroy() end
 
     title = title or LibraryConfig.WindowTitle
@@ -518,7 +510,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     NexusUI.ScreenGui.ResetOnSpawn = false
     NexusUI.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Botão de toggle
+    -- Botão toggle
     local toggleBtn = Instance.new("ImageButton")
     toggleBtn.Name = "ToggleButton"
     toggleBtn.Parent = NexusUI.ScreenGui
@@ -545,6 +537,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     AddCorner(mainFrame, 10)
     AddStroke(mainFrame, NexusUI.CurrentTheme.Accent, 2)
 
+    -- Sidebar
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
     sidebar.Size = UDim2.new(0, 100, 1, 0)
@@ -553,6 +546,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     AddCorner(sidebar, 10)
     MakeDraggable(mainFrame, sidebar)
 
+    -- Container de conteúdo
     local content = Instance.new("Frame")
     content.Name = "ContentContainer"
     content.Size = UDim2.new(1, -110, 1, -20)
@@ -560,6 +554,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     content.BackgroundTransparency = 1
     content.Parent = mainFrame
 
+    -- Título
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "TitleLabel"
     titleLabel.Parent = sidebar
@@ -571,6 +566,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     titleLabel.TextSize = 14
     titleLabel.LayoutOrder = 0
 
+    -- Restaurar posições
     if NexusUI.SavedPositions["MainFrame"] then
         local p = NexusUI.SavedPositions["MainFrame"]
         mainFrame.Position = UDim2.new(p[1], p[2], p[3], p[4])
@@ -606,48 +602,12 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     }):Play()
 
     ApplyThemeToUI()
-
-    -- Aba SETTINGS (fixa)
-    if includeDefaultSettings then
-        local settingsTab = NexusUI.CreateTab("⚙ SETTINGS")
-        NexusUI.CreateSection(settingsTab, "CONFIGURATION")
-        NexusUI.CreateButton(settingsTab, "SAVE CONFIGURATION", function()
-            NexusUI.SaveAllSettings()
-        end)
-        NexusUI.CreateButton(settingsTab, "RESET SETTINGS", function()
-            NexusUI.ResetAllSettings()
-        end)
-        NexusUI.CreateSection(settingsTab, "CUSTOM THEME")
-        NexusUI.CreateThemeSelector(settingsTab, function(themeName)
-            NexusUI.SetTheme(themeName)
-        end)
-    end
-
-    -- Aba CREDITS (fixa)
-    if includeDefaultCredits then
-        local creditsTab = NexusUI.CreateTab("✨ CREDITS")
-        NexusUI.CreateSection(creditsTab, "DEVELOPERS & CONTRIBUTORS")
-        local scrollContainer = Instance.new("ScrollingFrame")
-        scrollContainer.Size = UDim2.new(1, -10, 0, 300)
-        scrollContainer.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
-        scrollContainer.BackgroundTransparency = 0.5
-        scrollContainer.ScrollBarThickness = 4
-        scrollContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-        scrollContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        scrollContainer.Parent = creditsTab
-        AddCorner(scrollContainer, 8)
-
-        local containerLayout = Instance.new("UIListLayout")
-        containerLayout.Padding = UDim.new(0, 6)
-        containerLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        containerLayout.Parent = scrollContainer
-
-        NexusUI.CreditsContainer = scrollContainer
-    end
-
     return NexusUI
 end
 
+-- ============================================================================
+-- ABAS DINÂMICAS
+-- ============================================================================
 function NexusUI.CreateTab(name)
     if not NexusUI.MainFrame then error("CreateWindow must be called before CreateTab") end
     local tabBtn = Instance.new("TextButton")
@@ -689,11 +649,18 @@ function NexusUI.CreateTab(name)
         PlayClickSound()
         for _, t in ipairs(NexusUI.Tabs) do
             t.Frame.Visible = false
-            TweenService:Create(t.Btn, TweenInfo.new(0.3), {TextColor3 = NexusUI.CurrentTheme.TextDim, BackgroundColor3 = NexusUI.CurrentTheme.Background}):Play()
+            TweenService:Create(t.Btn, TweenInfo.new(0.3), {
+                TextColor3 = NexusUI.CurrentTheme.TextDim,
+                BackgroundColor3 = NexusUI.CurrentTheme.Background
+            }):Play()
         end
         tabFrame.Visible = true
-        TweenService:Create(tabBtn, TweenInfo.new(0.3), {TextColor3 = NexusUI.CurrentTheme.Text, BackgroundColor3 = NexusUI.CurrentTheme.AccentDark}):Play()
+        TweenService:Create(tabBtn, TweenInfo.new(0.3), {
+            TextColor3 = NexusUI.CurrentTheme.Text,
+            BackgroundColor3 = NexusUI.CurrentTheme.AccentDark
+        }):Play()
     end)
+
     return tabFrame
 end
 
@@ -711,7 +678,7 @@ function NexusUI.CreateSection(parent, text)
 end
 
 -- ============================================================================
--- ELEMENTOS DE UI
+-- ELEMENTOS DE UI (Toggle, Button, Input, Keybind, Dropdown, ThemeSelector)
 -- ============================================================================
 function NexusUI.CreateToggle(parent, text, default, callback, id)
     local frame = Instance.new("Frame")
@@ -762,11 +729,7 @@ function NexusUI.CreateToggle(parent, text, default, callback, id)
 
     if id then
         local saved = NexusUI.Config[id]
-        if saved ~= nil then
-            setter(saved)
-        else
-            NexusUI.Config[id] = default
-        end
+        if saved ~= nil then setter(saved) else NexusUI.Config[id] = default end
         RegisterElement(id, "toggle", setter, default)
     end
     return setter
@@ -852,11 +815,7 @@ function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback, id
 
     if id then
         local saved = NexusUI.Config[id]
-        if saved ~= nil then
-            setter(saved)
-        else
-            NexusUI.Config[id] = defaultVal
-        end
+        if saved ~= nil then setter(saved) else NexusUI.Config[id] = defaultVal end
         RegisterElement(id, "input", setter, defaultVal)
     end
     return box, setter
@@ -910,7 +869,6 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
         keyBtn.Text = "..."
         keyBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
         stroke.Color = Color3.fromRGB(255, 50, 50)
-
         if connection then connection:Disconnect() end
         connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if listening and not gameProcessed then
@@ -920,7 +878,6 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
                 connection:Disconnect()
             end
         end)
-
         task.delay(10, function()
             if listening then
                 listening = false
@@ -934,11 +891,7 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
 
     if id then
         local saved = NexusUI.Config[id]
-        if saved ~= nil then
-            setter(saved)
-        else
-            NexusUI.Config[id] = defaultKey
-        end
+        if saved ~= nil then setter(saved) else NexusUI.Config[id] = defaultKey end
         RegisterElement(id, "keybind", setter, defaultKey)
     end
     return keyBtn, setter
@@ -978,10 +931,7 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
     local isOpen = false
 
     local function closeDropdown()
-        if dropdownList then
-            dropdownList:Destroy()
-            dropdownList = nil
-        end
+        if dropdownList then dropdownList:Destroy() dropdownList = nil end
         isOpen = false
     end
 
@@ -1024,6 +974,7 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
             end)
         end
 
+        local connection
         local function onGlobalClick(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local mousePos = input.Position
@@ -1040,16 +991,13 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
                 end
             end
         end
-        local connection
         connection = UserInputService.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 onGlobalClick(input)
                 if not isOpen then connection:Disconnect() end
             end
         end)
-        dropdownList.Destroying:Connect(function()
-            if connection then connection:Disconnect() end
-        end)
+        dropdownList.Destroying:Connect(function() if connection then connection:Disconnect() end end)
     end
 
     dropdownBtn.MouseButton1Click:Connect(function()
@@ -1172,14 +1120,57 @@ function NexusUI.CreateThemeSelector(parent, onThemeChanged)
 end
 
 -- ============================================================================
--- FUNÇÕES DE CRÉDITOS (públicas)
+-- ABAS PADRÃO (SETTINGS E CREDITS) – para adicionar depois das abas do usuário
+-- ============================================================================
+function NexusUI.AddSettingsTab()
+    local settingsTab = NexusUI.CreateTab("⚙ SETTINGS")
+    NexusUI.CreateSection(settingsTab, "CONFIGURATION")
+    NexusUI.CreateButton(settingsTab, "SAVE CONFIGURATION", function()
+        NexusUI.SaveAllSettings()
+    end)
+    NexusUI.CreateButton(settingsTab, "RESET SETTINGS", function()
+        NexusUI.ResetAllSettings()
+    end)
+    NexusUI.CreateSection(settingsTab, "CUSTOM THEME")
+    NexusUI.CreateThemeSelector(settingsTab, function(themeName)
+        NexusUI.SetTheme(themeName)
+    end)
+end
+
+function NexusUI.AddCreditsTab()
+    local creditsTab = NexusUI.CreateTab("✨ CREDITS")
+    NexusUI.CreateSection(creditsTab, "DEVELOPERS & CONTRIBUTORS")
+    local scrollContainer = Instance.new("ScrollingFrame")
+    scrollContainer.Size = UDim2.new(1, -10, 0, 300)
+    scrollContainer.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+    scrollContainer.BackgroundTransparency = 0.5
+    scrollContainer.ScrollBarThickness = 4
+    scrollContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scrollContainer.Parent = creditsTab
+    AddCorner(scrollContainer, 8)
+
+    local containerLayout = Instance.new("UIListLayout")
+    containerLayout.Padding = UDim.new(0, 6)
+    containerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    containerLayout.Parent = scrollContainer
+
+    NexusUI.CreditsContainer = scrollContainer
+end
+
+function NexusUI.AddDefaultTabs()
+    NexusUI.AddSettingsTab()
+    NexusUI.AddCreditsTab()
+end
+
+-- ============================================================================
+-- FUNÇÕES DE CRÉDITO (adicionar cards)
 -- ============================================================================
 function NexusUI.AddCredit(name, role, imageId, youtubeChannelName, youtubeUrl)
     if not NexusUI.CreditsContainer then
-        NexusUI.Notify("CREDITS", "Aba de créditos não foi criada.", 3)
+        NexusUI.Notify("CREDITS", "Aba de créditos não foi criada. Chame NexusUI.AddCreditsTab() primeiro.", 3)
         return
     end
-    -- Criação do card
     local card = Instance.new("Frame")
     card.Size = UDim2.new(1, -10, 0, 90)
     card.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
@@ -1239,9 +1230,7 @@ end
 function NexusUI.ClearCredits()
     if NexusUI.CreditsContainer then
         for _, child in ipairs(NexusUI.CreditsContainer:GetChildren()) do
-            if child:IsA("Frame") then
-                child:Destroy()
-            end
+            if child:IsA("Frame") then child:Destroy() end
         end
     end
 end
@@ -1250,12 +1239,8 @@ end
 -- DESTRUIÇÃO
 -- ============================================================================
 function NexusUI.Destroy()
-    if NexusUI.ScreenGui then
-        NexusUI.ScreenGui:Destroy()
-    end
-    if NexusUI.NotifyContainer then
-        NexusUI.NotifyContainer:Destroy()
-    end
+    if NexusUI.ScreenGui then NexusUI.ScreenGui:Destroy() end
+    if NexusUI.NotifyContainer then NexusUI.NotifyContainer:Destroy() end
     NexusUI.Tabs = {}
     NexusUI.SavedPositions = {}
 end
