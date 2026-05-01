@@ -1,6 +1,6 @@
 -- NexusUILib.lua
 -- Biblioteca genérica de UI para Roblox
--- Com suporte a nome de arquivo de configuração personalizável
+-- Com abas SETTINGS e CREDITS fixas, suporte a créditos com link do YouTube
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -14,13 +14,14 @@ local LocalPlayer = Players.LocalPlayer
 local LibraryConfig = {
     WindowTitle = "NEXUS UI",
     DefaultTheme = "Original",
-    SaveFileName = "NexusUI_Config.json",  -- padrão, mas pode ser alterado
+    SaveFileName = "NexusUI_Config.json",
     ClickSoundId = "rbxassetid://4499400560",
     EnableSaving = true,
-    IncludeDefaultSettingsTab = true
+    IncludeDefaultSettingsTab = true,
+    IncludeDefaultCreditsTab = true
 }
 
--- Temas pré-definidos (compatíveis com o original)
+-- Temas pré-definidos
 local Themes = {
     Original = {
         Background = Color3.fromRGB(15, 15, 20),
@@ -124,12 +125,15 @@ local NexusUI = {
     CurrentTheme = nil,
     NotifyContainer = nil,
     NotifyList = nil,
+    CreditsContainer = nil,
     SavedPositions = {},
     Config = {},
     RegisteredElements = {}
 }
 
--- Funções utilitárias internas
+-- ============================================================================
+-- FUNÇÕES UTILITÁRIAS
+-- ============================================================================
 local function AddCorner(instance, radius)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, radius)
@@ -195,7 +199,6 @@ end
 
 local function MakeDraggableCornersOnly(frame)
     local cornerSize = 20
-
     local function createCornerDetector(position, size)
         local detector = Instance.new("Frame")
         detector.Name = "DragCorner_" .. position
@@ -203,7 +206,6 @@ local function MakeDraggableCornersOnly(frame)
         detector.BackgroundTransparency = 1
         detector.ZIndex = frame.ZIndex + 1
         detector.Parent = frame
-
         if position == "TopLeft" then
             detector.Position = UDim2.new(0, 0, 0, 0)
         elseif position == "TopRight" then
@@ -215,16 +217,13 @@ local function MakeDraggableCornersOnly(frame)
         end
         return detector
     end
-
     local detectors = {
         createCornerDetector("TopLeft", cornerSize),
         createCornerDetector("TopRight", cornerSize),
         createCornerDetector("BottomLeft", cornerSize),
         createCornerDetector("BottomRight", cornerSize)
     }
-
     local dragging, dragInput, dragStart, startPos
-
     local function startDragging(input)
         dragging = true
         dragStart = input.Position
@@ -235,7 +234,6 @@ local function MakeDraggableCornersOnly(frame)
             end
         end)
     end
-
     for _, detector in ipairs(detectors) do
         detector.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -249,7 +247,6 @@ local function MakeDraggableCornersOnly(frame)
             end
         end)
     end
-
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input == dragInput then
             local delta = input.Position - dragStart
@@ -268,7 +265,9 @@ local function MakeDraggableCornersOnly(frame)
     end)
 end
 
--- Sistema de notificações
+-- ============================================================================
+-- NOTIFICAÇÕES
+-- ============================================================================
 local function SetupNotifications()
     if NexusUI.NotifyContainer then return end
     NexusUI.NotifyContainer = Instance.new("ScreenGui")
@@ -294,7 +293,6 @@ end
 function NexusUI.Notify(title, text, duration)
     SetupNotifications()
     local order = - (os.clock() * 1000)
-
     local Frame = Instance.new("Frame")
     Frame.Size = UDim2.new(1, 0, 0, 60)
     Frame.BackgroundColor3 = NexusUI.CurrentTheme.Sidebar
@@ -351,7 +349,9 @@ function NexusUI.Notify(title, text, duration)
     end)
 end
 
--- Aplicar tema à UI
+-- ============================================================================
+-- TEMA E SALVAMENTO
+-- ============================================================================
 local function ApplyThemeToUI()
     if NexusUI.MainFrame then
         NexusUI.MainFrame.BackgroundColor3 = NexusUI.CurrentTheme.Background
@@ -387,7 +387,6 @@ local function ApplyThemeToUI()
     end
 end
 
--- Salvar configurações (usa o nome de arquivo atual)
 local function SaveUIConfig()
     if not LibraryConfig.EnableSaving then return end
     if not writefile then return end
@@ -406,7 +405,6 @@ local function SaveUIConfig()
     end
 end
 
--- Carregar configurações (usa o nome de arquivo atual)
 local function LoadUIConfig()
     if not LibraryConfig.EnableSaving then return end
     if not isfile then return end
@@ -433,13 +431,10 @@ local function LoadUIConfig()
     end
 end
 
--- Função para definir o nome do arquivo de configuração
 function NexusUI.SetConfigFileName(fileName)
     if type(fileName) == "string" and fileName ~= "" then
         LibraryConfig.SaveFileName = fileName
-        -- Recarregar configurações com o novo nome
         LoadUIConfig()
-        -- Aplicar configurações salvas nos elementos registrados
         for id, element in pairs(NexusUI.RegisteredElements) do
             local savedValue = NexusUI.Config[id]
             if savedValue ~= nil and element.setter then
@@ -447,18 +442,16 @@ function NexusUI.SetConfigFileName(fileName)
             end
         end
         ApplyThemeToUI()
-        NexusUI.Notify("CONFIG", "Arquivo de configuração alterado para: " .. fileName, 3)
+        NexusUI.Notify("CONFIG", "Arquivo alterado para: " .. fileName, 3)
         return true
     end
     return false
 end
 
--- Função para obter o nome atual do arquivo de configuração
 function NexusUI.GetConfigFileName()
     return LibraryConfig.SaveFileName
 end
 
--- Função para definir tema publicamente
 function NexusUI.SetTheme(themeName)
     if Themes[themeName] then
         NexusUI.CurrentTheme = Themes[themeName]
@@ -477,12 +470,10 @@ function NexusUI.SetWindowTitle(title)
     end
 end
 
--- Registrar um elemento para auto-save
 local function RegisterElement(id, type, setter, default)
     NexusUI.RegisteredElements[id] = {type = type, setter = setter, default = default}
 end
 
--- Aplicar configurações salvas a todos os elementos registrados
 local function ApplySavedSettings()
     for id, element in pairs(NexusUI.RegisteredElements) do
         local savedValue = NexusUI.Config[id]
@@ -508,18 +499,15 @@ function NexusUI.ResetAllSettings()
     NexusUI.Notify("CONFIG", "Settings reset to default!", 2)
 end
 
--- Criar a janela principal (agora com parâmetro para nome do arquivo de config)
-function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, configFileName)
-    if includeDefaultSettings == nil then
-        includeDefaultSettings = LibraryConfig.IncludeDefaultSettingsTab
-    end
-    if configFileName then
-        LibraryConfig.SaveFileName = configFileName
-    end
+-- ============================================================================
+-- CRIAÇÃO DA JANELA PRINCIPAL E ABAS
+-- ============================================================================
+function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, configFileName, includeDefaultCredits)
+    if includeDefaultSettings == nil then includeDefaultSettings = LibraryConfig.IncludeDefaultSettingsTab end
+    if includeDefaultCredits == nil then includeDefaultCredits = LibraryConfig.IncludeDefaultCreditsTab end
+    if configFileName then LibraryConfig.SaveFileName = configFileName end
 
-    if NexusUI.ScreenGui then
-        NexusUI.ScreenGui:Destroy()
-    end
+    if NexusUI.ScreenGui then NexusUI.ScreenGui:Destroy() end
 
     title = title or LibraryConfig.WindowTitle
     LoadUIConfig()
@@ -583,7 +571,6 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     titleLabel.TextSize = 14
     titleLabel.LayoutOrder = 0
 
-    -- Restaurar posições salvas
     if NexusUI.SavedPositions["MainFrame"] then
         local p = NexusUI.SavedPositions["MainFrame"]
         mainFrame.Position = UDim2.new(p[1], p[2], p[3], p[4])
@@ -620,7 +607,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
 
     ApplyThemeToUI()
 
-    -- Criar aba de configurações padrão, se solicitado
+    -- Aba SETTINGS (fixa)
     if includeDefaultSettings then
         local settingsTab = NexusUI.CreateTab("⚙ SETTINGS")
         NexusUI.CreateSection(settingsTab, "CONFIGURATION")
@@ -636,14 +623,33 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
         end)
     end
 
+    -- Aba CREDITS (fixa)
+    if includeDefaultCredits then
+        local creditsTab = NexusUI.CreateTab("✨ CREDITS")
+        NexusUI.CreateSection(creditsTab, "DEVELOPERS & CONTRIBUTORS")
+        local scrollContainer = Instance.new("ScrollingFrame")
+        scrollContainer.Size = UDim2.new(1, -10, 0, 300)
+        scrollContainer.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+        scrollContainer.BackgroundTransparency = 0.5
+        scrollContainer.ScrollBarThickness = 4
+        scrollContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+        scrollContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scrollContainer.Parent = creditsTab
+        AddCorner(scrollContainer, 8)
+
+        local containerLayout = Instance.new("UIListLayout")
+        containerLayout.Padding = UDim.new(0, 6)
+        containerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        containerLayout.Parent = scrollContainer
+
+        NexusUI.CreditsContainer = scrollContainer
+    end
+
     return NexusUI
 end
 
--- Criar uma nova aba
 function NexusUI.CreateTab(name)
-    if not NexusUI.MainFrame then
-        error("CreateWindow must be called before CreateTab")
-    end
+    if not NexusUI.MainFrame then error("CreateWindow must be called before CreateTab") end
     local tabBtn = Instance.new("TextButton")
     tabBtn.Size = UDim2.new(1, -10, 0, 30)
     tabBtn.Position = UDim2.new(0, 5, 0, 50 + (#NexusUI.Tabs * 35))
@@ -683,18 +689,11 @@ function NexusUI.CreateTab(name)
         PlayClickSound()
         for _, t in ipairs(NexusUI.Tabs) do
             t.Frame.Visible = false
-            TweenService:Create(t.Btn, TweenInfo.new(0.3), {
-                TextColor3 = NexusUI.CurrentTheme.TextDim,
-                BackgroundColor3 = NexusUI.CurrentTheme.Background
-            }):Play()
+            TweenService:Create(t.Btn, TweenInfo.new(0.3), {TextColor3 = NexusUI.CurrentTheme.TextDim, BackgroundColor3 = NexusUI.CurrentTheme.Background}):Play()
         end
         tabFrame.Visible = true
-        TweenService:Create(tabBtn, TweenInfo.new(0.3), {
-            TextColor3 = NexusUI.CurrentTheme.Text,
-            BackgroundColor3 = NexusUI.CurrentTheme.AccentDark
-        }):Play()
+        TweenService:Create(tabBtn, TweenInfo.new(0.3), {TextColor3 = NexusUI.CurrentTheme.Text, BackgroundColor3 = NexusUI.CurrentTheme.AccentDark}):Play()
     end)
-
     return tabFrame
 end
 
@@ -711,7 +710,9 @@ function NexusUI.CreateSection(parent, text)
     return label
 end
 
--- Toggle com auto-save
+-- ============================================================================
+-- ELEMENTOS DE UI
+-- ============================================================================
 function NexusUI.CreateToggle(parent, text, default, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
@@ -768,11 +769,9 @@ function NexusUI.CreateToggle(parent, text, default, callback, id)
         end
         RegisterElement(id, "toggle", setter, default)
     end
-
     return setter
 end
 
--- Botão simples
 function NexusUI.CreateButton(parent, text, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
@@ -799,7 +798,6 @@ function NexusUI.CreateButton(parent, text, callback)
     return btn
 end
 
--- Input com auto-save
 function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
@@ -829,7 +827,6 @@ function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback, id
     box.TextSize = 11
     box.Parent = frame
     AddCorner(box, 4)
-
     local stroke = AddStroke(box, Color3.fromRGB(50, 50, 60), 1)
 
     local setter = function(value)
@@ -862,11 +859,9 @@ function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback, id
         end
         RegisterElement(id, "input", setter, defaultVal)
     end
-
     return box, setter
 end
 
--- Keybind com auto-save
 function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
@@ -895,7 +890,6 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
     keyBtn.TextSize = 11
     keyBtn.Parent = frame
     AddCorner(keyBtn, 4)
-
     local stroke = AddStroke(keyBtn, Color3.fromRGB(50, 50, 60), 1)
 
     local setter = function(key)
@@ -947,11 +941,9 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
         end
         RegisterElement(id, "keybind", setter, defaultKey)
     end
-
     return keyBtn, setter
 end
 
--- Dropdown com auto-save
 function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 32)
@@ -996,7 +988,6 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
     local function openDropdown()
         if isOpen then return end
         isOpen = true
-
         dropdownList = Instance.new("Frame")
         dropdownList.Size = UDim2.new(0, 150, 0, 30 * #options)
         dropdownList.Position = UDim2.new(0, dropdownBtn.AbsolutePosition.X - frame.AbsolutePosition.X, 0, 32)
@@ -1040,7 +1031,6 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
                 local btnSize = dropdownBtn.AbsoluteSize
                 local listAbsPos = dropdownList and dropdownList.AbsolutePosition
                 local listSize = dropdownList and dropdownList.AbsoluteSize
-
                 if not (mousePos.X >= btnAbsPos.X and mousePos.X <= btnAbsPos.X + btnSize.X and
                         mousePos.Y >= btnAbsPos.Y and mousePos.Y <= btnAbsPos.Y + btnSize.Y) then
                     if listAbsPos and not (mousePos.X >= listAbsPos.X and mousePos.X <= listAbsPos.X + listSize.X and
@@ -1050,17 +1040,13 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
                 end
             end
         end
-
         local connection
         connection = UserInputService.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 onGlobalClick(input)
-                if not isOpen then
-                    connection:Disconnect()
-                end
+                if not isOpen then connection:Disconnect() end
             end
         end)
-
         dropdownList.Destroying:Connect(function()
             if connection then connection:Disconnect() end
         end)
@@ -1068,11 +1054,7 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
 
     dropdownBtn.MouseButton1Click:Connect(function()
         PlayClickSound()
-        if isOpen then
-            closeDropdown()
-        else
-            openDropdown()
-        end
+        if isOpen then closeDropdown() else openDropdown() end
     end)
 
     local function globalCheck(input)
@@ -1082,7 +1064,6 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
             local btnSize = dropdownBtn.AbsoluteSize
             local listAbsPos = dropdownList and dropdownList.AbsolutePosition
             local listSize = dropdownList and dropdownList.AbsoluteSize
-
             if not (mousePos.X >= btnAbsPos.X and mousePos.X <= btnAbsPos.X + btnSize.X and
                     mousePos.Y >= btnAbsPos.Y and mousePos.Y <= btnAbsPos.Y + btnSize.Y) then
                 if listAbsPos and not (mousePos.X >= listAbsPos.X and mousePos.X <= listAbsPos.X + listSize.X and
@@ -1092,7 +1073,6 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
             end
         end
     end
-
     UserInputService.InputBegan:Connect(globalCheck)
 
     local setter = function(value)
@@ -1116,18 +1096,15 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
         end
         RegisterElement(id, "dropdown", setter, default or options[1])
     end
-
     return setter
 end
 
--- Seletor de temas
 function NexusUI.CreateThemeSelector(parent, onThemeChanged)
     local themeNames = {"Original", "Red", "Blue", "Verde", "Purple", "Yellow", "Branco", "Preto"}
     local row1 = Instance.new("Frame")
     row1.Size = UDim2.new(1, -10, 0, 32)
     row1.BackgroundTransparency = 1
     row1.Parent = parent
-
     for i = 1, 3 do
         local themeName = themeNames[i]
         local btn = Instance.new("TextButton")
@@ -1146,13 +1123,11 @@ function NexusUI.CreateThemeSelector(parent, onThemeChanged)
             if onThemeChanged then onThemeChanged(themeName) end
         end)
     end
-
     local row2 = Instance.new("Frame")
     row2.Size = UDim2.new(1, -10, 0, 32)
     row2.Position = UDim2.new(0, 0, 0, 40)
     row2.BackgroundTransparency = 1
     row2.Parent = parent
-
     for i = 4, 6 do
         local themeName = themeNames[i]
         local btn = Instance.new("TextButton")
@@ -1171,13 +1146,11 @@ function NexusUI.CreateThemeSelector(parent, onThemeChanged)
             if onThemeChanged then onThemeChanged(themeName) end
         end)
     end
-
     local row3 = Instance.new("Frame")
     row3.Size = UDim2.new(1, -10, 0, 32)
     row3.Position = UDim2.new(0, 0, 0, 80)
     row3.BackgroundTransparency = 1
     row3.Parent = parent
-
     for i = 7, 8 do
         local themeName = themeNames[i]
         local btn = Instance.new("TextButton")
@@ -1198,6 +1171,84 @@ function NexusUI.CreateThemeSelector(parent, onThemeChanged)
     end
 end
 
+-- ============================================================================
+-- FUNÇÕES DE CRÉDITOS (públicas)
+-- ============================================================================
+function NexusUI.AddCredit(name, role, imageId, youtubeChannelName, youtubeUrl)
+    if not NexusUI.CreditsContainer then
+        NexusUI.Notify("CREDITS", "Aba de créditos não foi criada.", 3)
+        return
+    end
+    -- Criação do card
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(1, -10, 0, 90)
+    card.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+    card.Parent = NexusUI.CreditsContainer
+    AddCorner(card, 8)
+
+    if imageId and imageId ~= "" then
+        local img = Instance.new("ImageLabel")
+        img.Size = UDim2.new(0, 60, 0, 60)
+        img.Position = UDim2.new(0, 10, 0.5, -30)
+        img.BackgroundTransparency = 1
+        img.Image = imageId
+        img.Parent = card
+    end
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(0.6, 0, 0, 25)
+    nameLabel.Position = UDim2.new(0, 80, 0, 10)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = name
+    nameLabel.TextColor3 = NexusUI.CurrentTheme.Accent
+    nameLabel.Font = Enum.Font.GothamBlack
+    nameLabel.TextSize = 14
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = card
+
+    local roleLabel = Instance.new("TextLabel")
+    roleLabel.Size = UDim2.new(0.6, 0, 0, 20)
+    roleLabel.Position = UDim2.new(0, 80, 0, 35)
+    roleLabel.BackgroundTransparency = 1
+    roleLabel.Text = role
+    roleLabel.TextColor3 = NexusUI.CurrentTheme.TextDim
+    roleLabel.Font = Enum.Font.GothamSemibold
+    roleLabel.TextSize = 11
+    roleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    roleLabel.Parent = card
+
+    if youtubeChannelName and youtubeUrl then
+        local ytBtn = Instance.new("TextButton")
+        ytBtn.Size = UDim2.new(0.3, -10, 0, 25)
+        ytBtn.Position = UDim2.new(0, 80, 0, 58)
+        ytBtn.BackgroundColor3 = NexusUI.CurrentTheme.Accent
+        ytBtn.Text = "🎬 " .. youtubeChannelName
+        ytBtn.TextColor3 = Color3.new(1, 1, 1)
+        ytBtn.Font = Enum.Font.GothamBold
+        ytBtn.TextSize = 11
+        ytBtn.Parent = card
+        AddCorner(ytBtn, 4)
+        ytBtn.MouseButton1Click:Connect(function()
+            PlayClickSound()
+            setclipboard(youtubeUrl)
+            NexusUI.Notify("YOUTUBE", "Link copiado: " .. youtubeUrl, 3)
+        end)
+    end
+end
+
+function NexusUI.ClearCredits()
+    if NexusUI.CreditsContainer then
+        for _, child in ipairs(NexusUI.CreditsContainer:GetChildren()) do
+            if child:IsA("Frame") then
+                child:Destroy()
+            end
+        end
+    end
+end
+
+-- ============================================================================
+-- DESTRUIÇÃO
+-- ============================================================================
 function NexusUI.Destroy()
     if NexusUI.ScreenGui then
         NexusUI.ScreenGui:Destroy()
@@ -1209,7 +1260,7 @@ function NexusUI.Destroy()
     NexusUI.SavedPositions = {}
 end
 
--- Aplicar configurações salvas automaticamente ao carregar
+-- Auto-aplicar configurações salvas
 task.spawn(function()
     task.wait(0.1)
     ApplySavedSettings()
