@@ -1,5 +1,5 @@
 -- NexusUILib.lua (Remasterizada)
--- Com animações, slide entre abas, scroll na sidebar e dropdown com scroll
+-- Com animações, slide entre abas, scroll na sidebar, dropdown com scroll e SLIDER
 -- Mantém a mesma API da versão anterior
 
 local Players = game:GetService("Players")
@@ -23,7 +23,7 @@ local LibraryConfig = {
     AnimationSpeed = 0.3,
 }
 
--- Temas (com cores ajustadas)
+-- Temas (mantidos)
 local Themes = {
     Original = {
         Background = Color3.fromRGB(15, 15, 20),
@@ -137,7 +137,7 @@ local NexusUI = {
 }
 
 -- ============================================================================
--- FUNÇÕES UTILITÁRIAS
+-- FUNÇÕES UTILITÁRIAS (AddCorner, AddStroke, AddShadow, etc.)
 -- ============================================================================
 local function AddCorner(instance, radius)
     local corner = Instance.new("UICorner")
@@ -214,76 +214,8 @@ local function MakeDraggable(frame, trigger)
     end)
 end
 
-local function MakeDraggableCornersOnly(frame)
-    local cornerSize = 20
-    local function createCornerDetector(position, size)
-        local detector = Instance.new("Frame")
-        detector.Name = "DragCorner_" .. position
-        detector.Size = UDim2.new(0, size, 0, size)
-        detector.BackgroundTransparency = 1
-        detector.ZIndex = frame.ZIndex + 1
-        detector.Parent = frame
-        if position == "TopLeft" then
-            detector.Position = UDim2.new(0, 0, 0, 0)
-        elseif position == "TopRight" then
-            detector.Position = UDim2.new(1, -size, 0, 0)
-        elseif position == "BottomLeft" then
-            detector.Position = UDim2.new(0, 0, 1, -size)
-        elseif position == "BottomRight" then
-            detector.Position = UDim2.new(1, -size, 1, -size)
-        end
-        return detector
-    end
-    local detectors = {
-        createCornerDetector("TopLeft", cornerSize),
-        createCornerDetector("TopRight", cornerSize),
-        createCornerDetector("BottomLeft", cornerSize),
-        createCornerDetector("BottomRight", cornerSize)
-    }
-    local dragging, dragInput, dragStart, startPos
-    local function startDragging(input)
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-    for _, detector in ipairs(detectors) do
-        detector.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                PlayClickSound()
-                startDragging(input)
-            end
-        end)
-        detector.InputChanged:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-                dragInput = input
-            end
-        end)
-    end
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input == dragInput then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-            NexusUI.SavedPositions[frame.Name] = {
-                frame.Position.X.Scale, frame.Position.X.Offset,
-                frame.Position.Y.Scale, frame.Position.Y.Offset
-            }
-            SaveUIConfig()
-        end
-    end)
-end
-
 -- ============================================================================
--- NOTIFICAÇÕES (com animação)
+-- NOTIFICAÇÕES
 -- ============================================================================
 local function SetupNotifications()
     if NexusUI.NotifyContainer then return end
@@ -317,7 +249,7 @@ function NexusUI.Notify(title, text, duration)
     Frame.BorderSizePixel = 0
     Frame.LayoutOrder = order
     Frame.Parent = NexusUI.NotifyList
-    Frame.Position = UDim2.new(1, 0, 0, 0) -- começa fora da tela
+    Frame.Position = UDim2.new(1, 0, 0, 0)
 
     local Stroke = AddStroke(Frame, NexusUI.CurrentTheme.Accent, 1.5)
     AddCorner(Frame, 6)
@@ -351,7 +283,6 @@ function NexusUI.Notify(title, text, duration)
     MsgLbl.TextTransparency = 1
     Stroke.Transparency = 1
 
-    -- Animação de entrada (slide)
     TweenService:Create(Frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Position = UDim2.new(0, 0, 0, 0)
     }):Play()
@@ -457,27 +388,6 @@ local function LoadUIConfig()
     end
 end
 
-function NexusUI.SetConfigFileName(fileName)
-    if type(fileName) == "string" and fileName ~= "" then
-        LibraryConfig.SaveFileName = fileName
-        LoadUIConfig()
-        for id, element in pairs(NexusUI.RegisteredElements) do
-            local savedValue = NexusUI.Config[id]
-            if savedValue ~= nil and element.setter then
-                element.setter(savedValue)
-            end
-        end
-        ApplyThemeToUI()
-        NexusUI.Notify("CONFIG", "Arquivo alterado para: " .. fileName, 3)
-        return true
-    end
-    return false
-end
-
-function NexusUI.GetConfigFileName()
-    return LibraryConfig.SaveFileName
-end
-
 function NexusUI.SetTheme(themeName)
     if Themes[themeName] then
         NexusUI.CurrentTheme = Themes[themeName]
@@ -546,7 +456,6 @@ local function ReorderTabs()
         table.insert(orderedTabs, tab)
     end
 
-    -- Atualiza posição dos botões
     local yOffset = 50
     for i, tab in ipairs(orderedTabs) do
         local btn = tab.Btn
@@ -554,14 +463,11 @@ local function ReorderTabs()
         yOffset = yOffset + 35
     end
 
-    -- Ajusta o canvas do ScrollingFrame da sidebar
-    if NexusUI.SidebarScroll then
-        NexusUI.SidebarScroll.CanvasSize = UDim2.new(0, 0, 0, yOffset + 20)
-    end
+    -- Ajuste automático do canvas (não define manualmente)
 end
 
 -- ============================================================================
--- CRIAÇÃO DA JANELA (com animações)
+-- CRIAÇÃO DA JANELA
 -- ============================================================================
 function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, configFileName, includeDefaultCredits)
     if includeDefaultSettings == nil then includeDefaultSettings = LibraryConfig.IncludeDefaultSettingsTab end
@@ -579,7 +485,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     NexusUI.ScreenGui.ResetOnSpawn = false
     NexusUI.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Botão toggle (com animação de hover)
+    -- Botão toggle
     local toggleBtn = Instance.new("ImageButton")
     toggleBtn.Name = "ToggleButton"
     toggleBtn.Parent = NexusUI.ScreenGui
@@ -601,7 +507,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
         TweenService:Create(toggleBtn, TweenInfo.new(0.2), {ImageColor3 = Color3.new(1,1,1)}):Play()
     end)
 
-    -- Frame principal (com animação de entrada)
+    -- Frame principal
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -615,7 +521,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     AddStroke(mainFrame, NexusUI.CurrentTheme.Accent, 2)
     AddShadow(mainFrame, 20, Color3.new(0,0,0), 0.6)
 
-    -- Sidebar (com ScrollingFrame para scroll)
+    -- Sidebar com scroll
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
     sidebar.Size = UDim2.new(0, 100, 1, 0)
@@ -624,16 +530,14 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     AddCorner(sidebar, 12)
     MakeDraggable(mainFrame, sidebar)
 
-    -- ScrollingFrame para as abas (permite scroll vertical)
     local sidebarScroll = Instance.new("ScrollingFrame")
     sidebarScroll.Name = "SidebarScroll"
-    sidebarScroll.Size = UDim2.new(1, 0, 1, -40) -- deixa espaço para o título
+    sidebarScroll.Size = UDim2.new(1, 0, 1, -40)
     sidebarScroll.Position = UDim2.new(0, 0, 0, 40)
     sidebarScroll.BackgroundTransparency = 1
     sidebarScroll.ScrollBarThickness = 3
     sidebarScroll.ScrollBarImageColor3 = NexusUI.CurrentTheme.Accent
-    sidebarScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    sidebarScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
+    sidebarScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     sidebarScroll.Parent = sidebar
 
     local content = Instance.new("Frame")
@@ -644,7 +548,6 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     content.ClipsDescendants = true
     content.Parent = mainFrame
 
-    -- Frame para animação de slide entre abas
     local contentSlide = Instance.new("Frame")
     contentSlide.Name = "ContentSlide"
     contentSlide.Size = UDim2.new(1, 0, 1, 0)
@@ -663,7 +566,6 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     titleLabel.TextSize = 14
     titleLabel.LayoutOrder = 0
 
-    -- Restaurar posições salvas
     if NexusUI.SavedPositions["MainFrame"] then
         local p = NexusUI.SavedPositions["MainFrame"]
         mainFrame.Position = UDim2.new(p[1], p[2], p[3], p[4])
@@ -697,7 +599,6 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
         end
     end)
 
-    -- Animação de entrada da janela
     mainFrame.Size = UDim2.new(0, 0, 0, 0)
     TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
         Size = UDim2.new(0, 400, 0, 320)
@@ -705,7 +606,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
 
     ApplyThemeToUI()
 
-    -- Abas padrão (Settings e Credits)
+    -- Abas padrão
     if includeDefaultSettings then
         local settingsTab = NexusUI.CreateTab("⚙ SETTINGS", true)
         NexusUI.CreateSection(settingsTab, "CONFIGURATION")
@@ -748,7 +649,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
 end
 
 -- ============================================================================
--- CRIAÇÃO DE ABAS (com animação de slide)
+-- CRIAÇÃO DE ABAS
 -- ============================================================================
 function NexusUI.CreateTab(name, isFixed)
     if not NexusUI.MainFrame then error("CreateWindow must be called before CreateTab") end
@@ -765,7 +666,6 @@ function NexusUI.CreateTab(name, isFixed)
     tabBtn.Parent = NexusUI.SidebarScroll
     AddCorner(tabBtn, 6)
 
-    -- Hover animation
     tabBtn.MouseEnter:Connect(function()
         TweenService:Create(tabBtn, TweenInfo.new(0.2), {TextColor3 = NexusUI.CurrentTheme.Text}):Play()
     end)
@@ -775,7 +675,6 @@ function NexusUI.CreateTab(name, isFixed)
         end
     end)
 
-    -- Frame da aba (será colocado dentro do ContentSlide)
     local tabFrame = Instance.new("ScrollingFrame")
     tabFrame.Size = UDim2.new(1, 0, 1, 0)
     tabFrame.Position = UDim2.new(0, 0, 0, 0)
@@ -788,25 +687,23 @@ function NexusUI.CreateTab(name, isFixed)
     tabFrame.Parent = NexusUI.ContentSlide
 
     local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 6)
+    layout.Padding = UDim.new(0, 4)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = tabFrame
 
     local padding = Instance.new("UIPadding")
-    padding.PaddingTop = UDim.new(0, 5)
-    padding.PaddingLeft = UDim.new(0, 5)
-    padding.PaddingBottom = UDim.new(0, 5)
+    padding.PaddingTop = UDim.new(0, 2)
+    padding.PaddingLeft = UDim.new(0, 2)
+    padding.PaddingBottom = UDim.new(0, 2)
     padding.Parent = tabFrame
 
     local tabEntry = { Btn = tabBtn, Frame = tabFrame, IsFixed = isFixed or false }
     table.insert(NexusUI.Tabs, tabEntry)
 
-    -- Clique na aba: animação de slide
     tabBtn.MouseButton1Click:Connect(function()
         PlayClickSound()
         if NexusUI.Animating then return end
 
-        -- Esconde todas as abas
         for _, t in ipairs(NexusUI.Tabs) do
             t.Frame.Visible = false
             TweenService:Create(t.Btn, TweenInfo.new(0.3), {
@@ -815,14 +712,12 @@ function NexusUI.CreateTab(name, isFixed)
             }):Play()
         end
 
-        -- Mostra a aba selecionada com animação de slide
         tabFrame.Visible = true
         TweenService:Create(tabBtn, TweenInfo.new(0.3), {
             TextColor3 = NexusUI.CurrentTheme.Text,
             BackgroundColor3 = NexusUI.CurrentTheme.AccentDark
         }):Play()
 
-        -- Animação de slide (entrada pela direita)
         tabFrame.Position = UDim2.new(1, 0, 0, 0)
         NexusUI.Animating = true
         TweenService:Create(tabFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -833,12 +728,11 @@ function NexusUI.CreateTab(name, isFixed)
     end)
 
     ReorderTabs()
-
     return tabFrame
 end
 
 -- ============================================================================
--- ELEMENTOS DE UI (com animações)
+-- ELEMENTOS DE UI
 -- ============================================================================
 function NexusUI.CreateSection(parent, text)
     local label = Instance.new("TextLabel")
@@ -901,7 +795,6 @@ function NexusUI.CreateToggle(parent, text, default, callback, id)
         setter(not toggled)
     end)
 
-    -- Hover animation no toggle
     btn.MouseEnter:Connect(function()
         TweenService:Create(frame, TweenInfo.new(0.2), {BackgroundColor3 = NexusUI.CurrentTheme.AccentDark}):Play()
     end)
@@ -1101,7 +994,7 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
 end
 
 -- ============================================================================
--- DROPDOWN COM SCROLL (corrigido)
+-- DROPDOWN COM SCROLL
 -- ============================================================================
 function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
     local frame = Instance.new("Frame")
@@ -1162,7 +1055,6 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
         AddStroke(dropdownContainer, NexusUI.CurrentTheme.Accent, 1)
         AddShadow(dropdownContainer, 10, Color3.new(0,0,0), 0.5)
 
-        -- Animação de entrada
         dropdownContainer.Size = UDim2.new(0, 0, 0, 0)
         TweenService:Create(dropdownContainer, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
             Size = UDim2.new(0, 200, 0, 150)
@@ -1280,6 +1172,170 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
         end
         RegisterElement(id, "dropdown", setter, default or options[1])
     end
+    return setter
+end
+
+-- ============================================================================
+-- NOVO: SLIDER (controle deslizante com textbox)
+-- ============================================================================
+function NexusUI.CreateSlider(parent, text, min, max, default, callback, id)
+    -- Validação
+    min = tonumber(min) or 0
+    max = tonumber(max) or 100
+    default = tonumber(default) or (min + max) / 2
+    if default < min then default = min end
+    if default > max then default = max end
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -10, 0, 44) -- um pouco mais alto para acomodar slider
+    frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+    frame.Parent = parent
+    AddCorner(frame, 6)
+
+    -- Label
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.4, 0, 0.5, 0)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = NexusUI.CurrentTheme.Text
+    label.Font = Enum.Font.GothamSemibold
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+
+    -- Value textbox (exibe o valor atual)
+    local valueBox = Instance.new("TextBox")
+    valueBox.Size = UDim2.new(0.12, 0, 0.5, 0)
+    valueBox.Position = UDim2.new(0.85, 0, 0, 0)
+    valueBox.BackgroundColor3 = NexusUI.CurrentTheme.InputBG
+    valueBox.Text = tostring(default)
+    valueBox.TextColor3 = NexusUI.CurrentTheme.Accent
+    valueBox.Font = Enum.Font.GothamBold
+    valueBox.TextSize = 11
+    valueBox.Parent = frame
+    AddCorner(valueBox, 4)
+    local boxStroke = AddStroke(valueBox, Color3.fromRGB(50, 50, 60), 1)
+
+    -- Slider track (fundo)
+    local track = Instance.new("Frame")
+    track.Size = UDim2.new(0.7, -80, 0, 6)
+    track.Position = UDim2.new(0, 8, 0.5, 4)
+    track.BackgroundColor3 = NexusUI.CurrentTheme.InputBG
+    track.Parent = frame
+    AddCorner(track, 3)
+
+    -- Slider fill (parte preenchida)
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(0, 0, 1, 0)
+    fill.BackgroundColor3 = NexusUI.CurrentTheme.Accent
+    fill.Parent = track
+    AddCorner(fill, 3)
+
+    -- Knob (botão arrastável)
+    local knob = Instance.new("TextButton")
+    knob.Size = UDim2.new(0, 14, 0, 14)
+    knob.Position = UDim2.new(0, -7, 0.5, -7)
+    knob.BackgroundColor3 = NexusUI.CurrentTheme.Accent
+    knob.Text = ""
+    knob.Parent = track
+    AddCorner(knob, 7)
+    AddShadow(knob, 6, Color3.new(0,0,0), 0.4)
+
+    -- Função para atualizar slider
+    local function updateSlider(value)
+        value = math.clamp(value, min, max)
+        local percent = (value - min) / (max - min)
+        local trackWidth = track.AbsoluteSize.X
+        local fillWidth = percent * trackWidth
+        fill.Size = UDim2.new(0, fillWidth, 1, 0)
+        knob.Position = UDim2.new(0, fillWidth - 7, 0.5, -7)
+        valueBox.Text = tostring(math.round(value * 100) / 100) -- arredonda para 2 casas
+        if callback then callback(value) end
+        if id then
+            NexusUI.Config[id] = value
+            SaveUIConfig()
+        end
+    end
+
+    -- Configuração inicial
+    updateSlider(default)
+
+    -- Eventos de arrasto do knob
+    local dragging = false
+    local dragConnection
+
+    local function startDrag(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            PlayClickSound()
+            local trackAbsPos = track.AbsolutePosition
+            local trackWidth = track.AbsoluteSize.X
+            local mouseX = input.Position.X
+            local percent = math.clamp((mouseX - trackAbsPos.X) / trackWidth, 0, 1)
+            local value = min + percent * (max - min)
+            updateSlider(value)
+
+            -- Conecta movimento do mouse
+            if dragConnection then dragConnection:Disconnect() end
+            dragConnection = UserInputService.InputChanged:Connect(function(inputChanged)
+                if dragging and inputChanged.UserInputType == Enum.UserInputType.MouseMovement then
+                    local mouseX2 = inputChanged.Position.X
+                    local percent2 = math.clamp((mouseX2 - trackAbsPos.X) / trackWidth, 0, 1)
+                    local value2 = min + percent2 * (max - min)
+                    updateSlider(value2)
+                end
+            end)
+        end
+    end
+
+    local function endDrag()
+        dragging = false
+        if dragConnection then
+            dragConnection:Disconnect()
+            dragConnection = nil
+        end
+    end
+
+    knob.InputBegan:Connect(startDrag)
+    knob.InputEnded:Connect(endDrag)
+    track.InputBegan:Connect(startDrag)
+    track.InputEnded:Connect(endDrag)
+
+    -- Permitir editar o valor diretamente pelo textbox
+    valueBox.Focused:Connect(function()
+        TweenService:Create(boxStroke, TweenInfo.new(0.2), {Color = NexusUI.CurrentTheme.Accent}):Play()
+    end)
+    valueBox.FocusLost:Connect(function()
+        TweenService:Create(boxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(50, 50, 60)}):Play()
+        local val = tonumber(valueBox.Text)
+        if val then
+            updateSlider(val)
+        else
+            -- Se inválido, restaura o último valor salvo
+            local saved = NexusUI.Config[id]
+            if saved ~= nil then
+                updateSlider(saved)
+            else
+                updateSlider(default)
+            end
+        end
+    end)
+
+    local setter = function(value)
+        updateSlider(value)
+    end
+
+    if id then
+        local saved = NexusUI.Config[id]
+        if saved ~= nil then
+            setter(saved)
+        else
+            NexusUI.Config[id] = default
+        end
+        RegisterElement(id, "slider", setter, default)
+    end
+
     return setter
 end
 
@@ -1467,7 +1523,7 @@ function NexusUI.ClearCredits()
 end
 
 -- ============================================================================
--- DESTRUIÇÃO
+-- DESTRUIÇÃO E AUTO-CARREGAMENTO
 -- ============================================================================
 function NexusUI.Destroy()
     if NexusUI.ScreenGui then
