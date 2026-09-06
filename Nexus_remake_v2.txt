@@ -1,6 +1,6 @@
--- NexusUILib.lua (Remake Pro - Ultra Moderna)
+-- NexusUILib.lua (Remake Pro - Cantos Corrigidos)
 -- Com glassmorphism, animações fluidas, gradientes e design premium
--- Mantém a mesma API da versão anterior
+-- CORREÇÃO: ClipsDescendants = true em todos os frames com UICorner
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -228,19 +228,16 @@ local NexusUI = {
 }
 
 -- ============================================================================
--- FUNÇÕES UTILITÁRIAS (com estilo premium)
+-- FUNÇÕES UTILITÁRIAS (com correção de cantos)
 -- ============================================================================
 local function AddCorner(instance, radius)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, radius)
     corner.Parent = instance
-    return corner
-end
-
-local function AddCornerSmooth(instance, radius)
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, radius)
-    corner.Parent = instance
+    -- Garante que o frame recorte os filhos
+    if instance:IsA("Frame") or instance:IsA("ScrollingFrame") then
+        instance.ClipsDescendants = true
+    end
     return corner
 end
 
@@ -254,7 +251,7 @@ local function AddStroke(instance, color, thickness, transparency)
     return stroke
 end
 
-local function AddShadow(instance, size, color, transparency, blur)
+local function AddShadow(instance, size, color, transparency)
     local shadow = Instance.new("ImageLabel")
     shadow.Name = "Shadow"
     shadow.Size = UDim2.new(1, size * 2, 1, size * 2)
@@ -266,20 +263,6 @@ local function AddShadow(instance, size, color, transparency, blur)
     shadow.ZIndex = -1
     shadow.Parent = instance
     return shadow
-end
-
-local function AddGlow(instance, color, size, transparency)
-    local glow = Instance.new("ImageLabel")
-    glow.Name = "Glow"
-    glow.Size = UDim2.new(1, size * 2, 1, size * 2)
-    glow.Position = UDim2.new(0.5, -size, 0.5, -size)
-    glow.BackgroundTransparency = 1
-    glow.Image = "rbxassetid://1316045115"
-    glow.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
-    glow.ImageTransparency = transparency or 0.8
-    glow.ZIndex = -1
-    glow.Parent = instance
-    return glow
 end
 
 local function PlayClickSound()
@@ -363,6 +346,7 @@ function NexusUI.Notify(title, text, duration)
     Frame.LayoutOrder = order
     Frame.Parent = NexusUI.NotifyList
     Frame.Position = UDim2.new(1, 0, 0, 0)
+    Frame.ClipsDescendants = true  -- CORREÇÃO: cantos arredondados
     -- Glass effect
     local glass = Instance.new("Frame")
     glass.Size = UDim2.new(1, 0, 1, 0)
@@ -450,17 +434,6 @@ local function ApplyThemeToUI()
         if stroke then 
             stroke.Color = theme.Accent
             stroke.Transparency = 0.2
-        end
-        -- Glass blur
-        local glass = NexusUI.MainFrame:FindFirstChild("GlassBlur")
-        if not glass then
-            glass = Instance.new("Frame")
-            glass.Name = "GlassBlur"
-            glass.Size = UDim2.new(1, 0, 1, 0)
-            glass.BackgroundColor3 = Color3.fromRGB(255,255,255)
-            glass.BackgroundTransparency = 0.02
-            glass.ZIndex = -1
-            glass.Parent = NexusUI.MainFrame
         end
     end
     if NexusUI.TitleLabel then
@@ -651,7 +624,6 @@ local function ReorderTabs()
         NexusUI.TabScroll.CanvasSize = UDim2.new(0, xOffset + 20, 0, 0)
     end
     
-    -- Atualiza underline
     UpdateUnderline()
 end
 
@@ -729,7 +701,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     mainFrame.BackgroundColor3 = NexusUI.CurrentTheme.Background
     mainFrame.BackgroundTransparency = NexusUI.CurrentTheme.BackgroundTransparency or 0.85
     mainFrame.Parent = NexusUI.ScreenGui
-    mainFrame.ClipsDescendants = true
+    mainFrame.ClipsDescendants = true  -- CORREÇÃO: cantos arredondados
     mainFrame.Visible = true
     AddCorner(mainFrame, 16)
     AddStroke(mainFrame, NexusUI.CurrentTheme.Accent, 1.5, 0.2)
@@ -776,6 +748,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     tabContainer.BackgroundColor3 = NexusUI.CurrentTheme.TabBG
     tabContainer.BackgroundTransparency = NexusUI.CurrentTheme.TabBGTransparency or 0.05
     tabContainer.Parent = mainFrame
+    tabContainer.ClipsDescendants = true  -- CORREÇÃO: cantos arredondados
     AddCorner(tabContainer, 8)
     AddStroke(tabContainer, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.12)
 
@@ -791,6 +764,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     tabScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
     tabScroll.ScrollingDirection = Enum.ScrollingDirection.X
     tabScroll.Parent = tabContainer
+    tabScroll.ClipsDescendants = false -- ScrollingFrame já lida com clip
 
     -- Underline animado
     local tabUnderline = Instance.new("Frame")
@@ -816,6 +790,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     contentSlide.Name = "ContentSlide"
     contentSlide.Size = UDim2.new(1, 0, 1, 0)
     contentSlide.BackgroundTransparency = 1
+    contentSlide.ClipsDescendants = true
     contentSlide.Parent = content
 
     -- Restaurar posições
@@ -888,6 +863,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
         scrollContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
         scrollContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
         scrollContainer.Parent = creditsTab
+        scrollContainer.ClipsDescendants = true
         AddCorner(scrollContainer, 10)
         AddStroke(scrollContainer, NexusUI.CurrentTheme.BorderColor, 1, 0.08)
 
@@ -951,6 +927,7 @@ function NexusUI.CreateTab(name, isFixed)
     tabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
     tabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     tabFrame.Parent = NexusUI.ContentSlide
+    tabFrame.ClipsDescendants = true
 
     local layout = Instance.new("UIListLayout")
     layout.Padding = UDim.new(0, 8)
@@ -1009,7 +986,6 @@ function NexusUI.CreateTab(name, isFixed)
             Position = UDim2.new(0, 0, 0, 0)
         }):Play()
         
-        -- Update underline
         UpdateUnderline()
         
         task.wait(0.35)
@@ -1052,6 +1028,7 @@ function NexusUI.CreateToggle(parent, text, default, callback, id)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
     frame.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     frame.Parent = parent
+    frame.ClipsDescendants = true
     AddCorner(frame, 10)
     AddStroke(frame, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
     AddShadow(frame, 8, NexusUI.CurrentTheme.ShadowColor, 0.2)
@@ -1119,7 +1096,6 @@ function NexusUI.CreateToggle(parent, text, default, callback, id)
         setter(not toggled)
     end)
 
-    -- Hover effect
     btn.MouseEnter:Connect(function()
         TweenService:Create(frame, TweenInfo.new(0.2), {
             BackgroundTransparency = (NexusUI.CurrentTheme.ItemBGTransparency or 0.06) - 0.03
@@ -1149,6 +1125,7 @@ function NexusUI.CreateButton(parent, text, callback)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
     frame.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     frame.Parent = parent
+    frame.ClipsDescendants = true
     AddCorner(frame, 10)
     AddStroke(frame, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
     AddShadow(frame, 8, NexusUI.CurrentTheme.ShadowColor, 0.2)
@@ -1203,6 +1180,7 @@ function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback, id
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
     frame.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     frame.Parent = parent
+    frame.ClipsDescendants = true
     AddCorner(frame, 10)
     AddStroke(frame, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
 
@@ -1282,6 +1260,7 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
     frame.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     frame.Parent = parent
+    frame.ClipsDescendants = true
     AddCorner(frame, 10)
     AddStroke(frame, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
 
@@ -1372,6 +1351,7 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
     frame.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     frame.Parent = parent
+    frame.ClipsDescendants = true
     AddCorner(frame, 10)
     AddStroke(frame, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
 
@@ -1441,6 +1421,7 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
         dropdownContainer.BorderSizePixel = 0
         dropdownContainer.ZIndex = 999
         dropdownContainer.Parent = NexusUI.ScreenGui
+        dropdownContainer.ClipsDescendants = true
         AddCorner(dropdownContainer, 12)
         AddStroke(dropdownContainer, NexusUI.CurrentTheme.Accent, 1.5, 0.3)
         AddShadow(dropdownContainer, 15, NexusUI.CurrentTheme.ShadowColor, NexusUI.CurrentTheme.ShadowTransparency)
@@ -1452,7 +1433,6 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
         glass.BackgroundTransparency = 0.02
         glass.Parent = dropdownContainer
 
-        -- Tamanho baseado no número de opções
         local maxHeight = math.min(#options * 32, 160)
         dropdownContainer.Size = UDim2.new(0, 240, 0, maxHeight)
         TweenService:Create(dropdownContainer, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
@@ -1474,6 +1454,7 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
         scroll.CanvasSize = UDim2.new(0, 0, 0, #options * 32)
         scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
         scroll.Parent = dropdownContainer
+        scroll.ClipsDescendants = true
 
         local layout = Instance.new("UIListLayout")
         layout.Padding = UDim.new(0, 2)
@@ -1490,6 +1471,7 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
             optBtn.Font = Enum.Font.GothamSemibold
             optBtn.TextSize = 12
             optBtn.Parent = scroll
+            optBtn.ClipsDescendants = true
             AddCorner(optBtn, 6)
             AddStroke(optBtn, NexusUI.CurrentTheme.BorderColor, 1, 0.05)
 
@@ -1612,6 +1594,7 @@ function NexusUI.CreateThemeSelector(parent, onThemeChanged)
         btn.Font = Enum.Font.GothamBold
         btn.TextSize = 12
         btn.Parent = row1
+        btn.ClipsDescendants = true
         AddCorner(btn, 8)
         AddStroke(btn, NexusUI.CurrentTheme.BorderColor, 1, 0.08)
 
@@ -1651,6 +1634,7 @@ function NexusUI.CreateThemeSelector(parent, onThemeChanged)
         btn.Font = Enum.Font.GothamBold
         btn.TextSize = 12
         btn.Parent = row2
+        btn.ClipsDescendants = true
         AddCorner(btn, 8)
         AddStroke(btn, NexusUI.CurrentTheme.BorderColor, 1, 0.08)
 
@@ -1690,6 +1674,7 @@ function NexusUI.CreateThemeSelector(parent, onThemeChanged)
         btn.Font = Enum.Font.GothamBold
         btn.TextSize = 12
         btn.Parent = row3
+        btn.ClipsDescendants = true
         AddCorner(btn, 8)
         AddStroke(btn, NexusUI.CurrentTheme.BorderColor, 1, 0.08)
 
@@ -1727,6 +1712,7 @@ function NexusUI.AddCredit(name, role, imageId, youtubeChannelName, youtubeUrl)
     card.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
     card.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     card.Parent = NexusUI.CreditsContainer
+    card.ClipsDescendants = true
     AddCorner(card, 10)
     AddStroke(card, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
     AddShadow(card, 10, NexusUI.CurrentTheme.ShadowColor, 0.2)
@@ -1775,6 +1761,7 @@ function NexusUI.AddCredit(name, role, imageId, youtubeChannelName, youtubeUrl)
         ytBtn.Font = Enum.Font.GothamBold
         ytBtn.TextSize = 11
         ytBtn.Parent = card
+        ytBtn.ClipsDescendants = true
         AddCorner(ytBtn, 8)
         AddStroke(ytBtn, NexusUI.CurrentTheme.Accent, 1, 0.2)
 
