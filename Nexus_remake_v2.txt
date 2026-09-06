@@ -1,5 +1,5 @@
--- NexusUILib.lua (Abas Horizontais) v2 — UI Moderna
--- Animações, scroll horizontal nas abas, dropdown com scroll
+-- NexusUILib.lua (Remake Pro - Ultra Moderna)
+-- Com glassmorphism, animações fluidas, gradientes e design premium
 -- Mantém a mesma API da versão anterior
 
 local Players = game:GetService("Players")
@@ -11,139 +11,207 @@ local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
+-- Configurações padrão
 local LibraryConfig = {
-    WindowTitle = "NEXUS UI",
+    WindowTitle = "NEXUS PRO",
     DefaultTheme = "Original",
-    SaveFileName = "NexusUI_Config.json",
+    SaveFileName = "NexusPro_Config.json",
     ClickSoundId = "rbxassetid://4499400560",
     EnableSaving = true,
     IncludeDefaultSettingsTab = true,
     IncludeDefaultCreditsTab = true,
-    AnimationSpeed = 0.25,
+    AnimationSpeed = 0.3,
 }
 
+-- Temas premium (com cores mais vibrantes e glass)
 local Themes = {
     Original = {
         Background = Color3.fromRGB(12, 12, 18),
-        Header = Color3.fromRGB(16, 16, 24),
-        Accent = Color3.fromRGB(0, 170, 255),
-        AccentDark = Color3.fromRGB(0, 90, 160),
-        Ghost = Color3.fromRGB(140, 50, 255),
-        Text = Color3.fromRGB(230, 230, 235),
-        TextDim = Color3.fromRGB(110, 115, 130),
-        ItemBG = Color3.fromRGB(22, 22, 30),
-        ItemHover = Color3.fromRGB(28, 28, 40),
-        InputBG = Color3.fromRGB(8, 8, 14),
-        TabBG = Color3.fromRGB(14, 14, 20),
-        Separator = Color3.fromRGB(35, 35, 50),
+        BackgroundTransparency = 0.85,
+        Accent = Color3.fromRGB(0, 180, 255),
+        AccentDark = Color3.fromRGB(0, 100, 200),
+        AccentGrad1 = Color3.fromRGB(0, 180, 255),
+        AccentGrad2 = Color3.fromRGB(100, 50, 255),
+        Ghost = Color3.fromRGB(180, 50, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(160, 165, 180),
+        ItemBG = Color3.fromRGB(255, 255, 255),
+        ItemBGTransparency = 0.08,
+        InputBG = Color3.fromRGB(255, 255, 255),
+        InputBGTransparency = 0.06,
+        TabBG = Color3.fromRGB(255, 255, 255),
+        TabBGTransparency = 0.05,
+        BorderColor = Color3.fromRGB(255, 255, 255),
+        BorderTransparency = 0.12,
+        ShadowColor = Color3.fromRGB(0, 0, 0),
+        ShadowTransparency = 0.6,
+        GlowColor = Color3.fromRGB(0, 180, 255),
     },
     Red = {
-        Background = Color3.fromRGB(14, 10, 10),
-        Header = Color3.fromRGB(20, 14, 14),
-        Accent = Color3.fromRGB(255, 45, 45),
-        AccentDark = Color3.fromRGB(140, 20, 20),
-        Ghost = Color3.fromRGB(255, 50, 140),
-        Text = Color3.fromRGB(235, 225, 225),
-        TextDim = Color3.fromRGB(120, 100, 100),
-        ItemBG = Color3.fromRGB(26, 18, 18),
-        ItemHover = Color3.fromRGB(36, 22, 22),
-        InputBG = Color3.fromRGB(12, 8, 8),
-        TabBG = Color3.fromRGB(18, 12, 12),
-        Separator = Color3.fromRGB(50, 30, 30),
+        Background = Color3.fromRGB(18, 10, 10),
+        BackgroundTransparency = 0.88,
+        Accent = Color3.fromRGB(255, 50, 50),
+        AccentDark = Color3.fromRGB(180, 0, 0),
+        AccentGrad1 = Color3.fromRGB(255, 50, 50),
+        AccentGrad2 = Color3.fromRGB(200, 0, 100),
+        Ghost = Color3.fromRGB(255, 80, 180),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(180, 160, 160),
+        ItemBG = Color3.fromRGB(255, 255, 255),
+        ItemBGTransparency = 0.08,
+        InputBG = Color3.fromRGB(255, 255, 255),
+        InputBGTransparency = 0.06,
+        TabBG = Color3.fromRGB(255, 255, 255),
+        TabBGTransparency = 0.05,
+        BorderColor = Color3.fromRGB(255, 100, 100),
+        BorderTransparency = 0.15,
+        ShadowColor = Color3.fromRGB(0, 0, 0),
+        ShadowTransparency = 0.6,
+        GlowColor = Color3.fromRGB(255, 50, 50),
     },
     Blue = {
-        Background = Color3.fromRGB(10, 10, 18),
-        Header = Color3.fromRGB(14, 14, 26),
-        Accent = Color3.fromRGB(60, 120, 255),
-        AccentDark = Color3.fromRGB(30, 60, 160),
-        Ghost = Color3.fromRGB(100, 160, 255),
-        Text = Color3.fromRGB(220, 225, 240),
-        TextDim = Color3.fromRGB(100, 110, 140),
-        ItemBG = Color3.fromRGB(18, 18, 30),
-        ItemHover = Color3.fromRGB(22, 22, 40),
-        InputBG = Color3.fromRGB(8, 8, 16),
-        TabBG = Color3.fromRGB(12, 12, 22),
-        Separator = Color3.fromRGB(30, 30, 55),
+        Background = Color3.fromRGB(10, 12, 22),
+        BackgroundTransparency = 0.85,
+        Accent = Color3.fromRGB(50, 140, 255),
+        AccentDark = Color3.fromRGB(0, 80, 200),
+        AccentGrad1 = Color3.fromRGB(50, 140, 255),
+        AccentGrad2 = Color3.fromRGB(0, 200, 255),
+        Ghost = Color3.fromRGB(100, 180, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(160, 175, 200),
+        ItemBG = Color3.fromRGB(255, 255, 255),
+        ItemBGTransparency = 0.08,
+        InputBG = Color3.fromRGB(255, 255, 255),
+        InputBGTransparency = 0.06,
+        TabBG = Color3.fromRGB(255, 255, 255),
+        TabBGTransparency = 0.05,
+        BorderColor = Color3.fromRGB(100, 180, 255),
+        BorderTransparency = 0.15,
+        ShadowColor = Color3.fromRGB(0, 0, 0),
+        ShadowTransparency = 0.6,
+        GlowColor = Color3.fromRGB(50, 140, 255),
     },
     Verde = {
-        Background = Color3.fromRGB(10, 14, 10),
-        Header = Color3.fromRGB(14, 20, 14),
-        Accent = Color3.fromRGB(0, 210, 80),
-        AccentDark = Color3.fromRGB(0, 120, 45),
-        Ghost = Color3.fromRGB(100, 255, 120),
-        Text = Color3.fromRGB(220, 235, 220),
-        TextDim = Color3.fromRGB(95, 120, 95),
-        ItemBG = Color3.fromRGB(16, 22, 16),
-        ItemHover = Color3.fromRGB(20, 30, 20),
-        InputBG = Color3.fromRGB(8, 12, 8),
-        TabBG = Color3.fromRGB(12, 16, 12),
-        Separator = Color3.fromRGB(28, 45, 28),
+        Background = Color3.fromRGB(10, 20, 12),
+        BackgroundTransparency = 0.85,
+        Accent = Color3.fromRGB(0, 255, 120),
+        AccentDark = Color3.fromRGB(0, 180, 60),
+        AccentGrad1 = Color3.fromRGB(0, 255, 120),
+        AccentGrad2 = Color3.fromRGB(0, 200, 200),
+        Ghost = Color3.fromRGB(100, 255, 180),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(160, 200, 180),
+        ItemBG = Color3.fromRGB(255, 255, 255),
+        ItemBGTransparency = 0.08,
+        InputBG = Color3.fromRGB(255, 255, 255),
+        InputBGTransparency = 0.06,
+        TabBG = Color3.fromRGB(255, 255, 255),
+        TabBGTransparency = 0.05,
+        BorderColor = Color3.fromRGB(100, 255, 150),
+        BorderTransparency = 0.15,
+        ShadowColor = Color3.fromRGB(0, 0, 0),
+        ShadowTransparency = 0.6,
+        GlowColor = Color3.fromRGB(0, 255, 120),
     },
     Purple = {
-        Background = Color3.fromRGB(14, 10, 18),
-        Header = Color3.fromRGB(20, 14, 26),
-        Accent = Color3.fromRGB(165, 60, 255),
-        AccentDark = Color3.fromRGB(90, 30, 160),
-        Ghost = Color3.fromRGB(200, 100, 255),
-        Text = Color3.fromRGB(230, 220, 240),
-        TextDim = Color3.fromRGB(115, 100, 135),
-        ItemBG = Color3.fromRGB(24, 16, 32),
-        ItemHover = Color3.fromRGB(32, 20, 44),
-        InputBG = Color3.fromRGB(10, 6, 14),
-        TabBG = Color3.fromRGB(18, 12, 24),
-        Separator = Color3.fromRGB(45, 28, 60),
+        Background = Color3.fromRGB(16, 10, 22),
+        BackgroundTransparency = 0.88,
+        Accent = Color3.fromRGB(180, 60, 255),
+        AccentDark = Color3.fromRGB(100, 0, 200),
+        AccentGrad1 = Color3.fromRGB(180, 60, 255),
+        AccentGrad2 = Color3.fromRGB(255, 0, 200),
+        Ghost = Color3.fromRGB(220, 100, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(180, 160, 200),
+        ItemBG = Color3.fromRGB(255, 255, 255),
+        ItemBGTransparency = 0.08,
+        InputBG = Color3.fromRGB(255, 255, 255),
+        InputBGTransparency = 0.06,
+        TabBG = Color3.fromRGB(255, 255, 255),
+        TabBGTransparency = 0.05,
+        BorderColor = Color3.fromRGB(200, 120, 255),
+        BorderTransparency = 0.15,
+        ShadowColor = Color3.fromRGB(0, 0, 0),
+        ShadowTransparency = 0.6,
+        GlowColor = Color3.fromRGB(180, 60, 255),
     },
     Yellow = {
-        Background = Color3.fromRGB(14, 13, 8),
-        Header = Color3.fromRGB(20, 18, 10),
-        Accent = Color3.fromRGB(240, 200, 0),
-        AccentDark = Color3.fromRGB(140, 115, 0),
-        Ghost = Color3.fromRGB(255, 230, 60),
-        Text = Color3.fromRGB(240, 235, 210),
-        TextDim = Color3.fromRGB(125, 120, 80),
-        ItemBG = Color3.fromRGB(24, 22, 12),
-        ItemHover = Color3.fromRGB(32, 30, 16),
-        InputBG = Color3.fromRGB(10, 9, 4),
-        TabBG = Color3.fromRGB(16, 15, 8),
-        Separator = Color3.fromRGB(50, 46, 20),
+        Background = Color3.fromRGB(20, 18, 8),
+        BackgroundTransparency = 0.85,
+        Accent = Color3.fromRGB(255, 220, 0),
+        AccentDark = Color3.fromRGB(180, 150, 0),
+        AccentGrad1 = Color3.fromRGB(255, 220, 0),
+        AccentGrad2 = Color3.fromRGB(255, 150, 0),
+        Ghost = Color3.fromRGB(255, 240, 80),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(200, 195, 160),
+        ItemBG = Color3.fromRGB(255, 255, 255),
+        ItemBGTransparency = 0.08,
+        InputBG = Color3.fromRGB(255, 255, 255),
+        InputBGTransparency = 0.06,
+        TabBG = Color3.fromRGB(255, 255, 255),
+        TabBGTransparency = 0.05,
+        BorderColor = Color3.fromRGB(255, 230, 100),
+        BorderTransparency = 0.15,
+        ShadowColor = Color3.fromRGB(0, 0, 0),
+        ShadowTransparency = 0.6,
+        GlowColor = Color3.fromRGB(255, 220, 0),
     },
     Branco = {
-        Background = Color3.fromRGB(235, 236, 240),
-        Header = Color3.fromRGB(245, 246, 250),
-        Accent = Color3.fromRGB(0, 110, 240),
-        AccentDark = Color3.fromRGB(0, 70, 180),
-        Ghost = Color3.fromRGB(80, 90, 110),
-        Text = Color3.fromRGB(20, 22, 30),
-        TextDim = Color3.fromRGB(100, 105, 120),
-        ItemBG = Color3.fromRGB(210, 212, 220),
-        ItemHover = Color3.fromRGB(195, 198, 210),
-        InputBG = Color3.fromRGB(175, 178, 190),
-        TabBG = Color3.fromRGB(220, 222, 230),
-        Separator = Color3.fromRGB(190, 192, 205),
+        Background = Color3.fromRGB(245, 245, 250),
+        BackgroundTransparency = 0.92,
+        Accent = Color3.fromRGB(0, 120, 255),
+        AccentDark = Color3.fromRGB(0, 80, 200),
+        AccentGrad1 = Color3.fromRGB(0, 120, 255),
+        AccentGrad2 = Color3.fromRGB(50, 50, 255),
+        Ghost = Color3.fromRGB(120, 120, 140),
+        Text = Color3.fromRGB(20, 20, 30),
+        TextDim = Color3.fromRGB(100, 100, 120),
+        ItemBG = Color3.fromRGB(0, 0, 0),
+        ItemBGTransparency = 0.06,
+        InputBG = Color3.fromRGB(0, 0, 0),
+        InputBGTransparency = 0.05,
+        TabBG = Color3.fromRGB(0, 0, 0),
+        TabBGTransparency = 0.04,
+        BorderColor = Color3.fromRGB(0, 0, 0),
+        BorderTransparency = 0.1,
+        ShadowColor = Color3.fromRGB(0, 0, 0),
+        ShadowTransparency = 0.15,
+        GlowColor = Color3.fromRGB(0, 120, 255),
     },
     Preto = {
-        Background = Color3.fromRGB(6, 6, 8),
-        Header = Color3.fromRGB(10, 10, 14),
-        Accent = Color3.fromRGB(220, 220, 225),
-        AccentDark = Color3.fromRGB(100, 100, 110),
-        Ghost = Color3.fromRGB(80, 80, 90),
-        Text = Color3.fromRGB(215, 215, 220),
-        TextDim = Color3.fromRGB(90, 90, 100),
-        ItemBG = Color3.fromRGB(18, 18, 22),
-        ItemHover = Color3.fromRGB(26, 26, 32),
-        InputBG = Color3.fromRGB(10, 10, 14),
-        TabBG = Color3.fromRGB(14, 14, 18),
-        Separator = Color3.fromRGB(32, 32, 40),
+        Background = Color3.fromRGB(8, 8, 10),
+        BackgroundTransparency = 0.92,
+        Accent = Color3.fromRGB(255, 255, 255),
+        AccentDark = Color3.fromRGB(150, 150, 150),
+        AccentGrad1 = Color3.fromRGB(255, 255, 255),
+        AccentGrad2 = Color3.fromRGB(180, 180, 200),
+        Ghost = Color3.fromRGB(120, 120, 140),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 160),
+        ItemBG = Color3.fromRGB(255, 255, 255),
+        ItemBGTransparency = 0.06,
+        InputBG = Color3.fromRGB(255, 255, 255),
+        InputBGTransparency = 0.05,
+        TabBG = Color3.fromRGB(255, 255, 255),
+        TabBGTransparency = 0.04,
+        BorderColor = Color3.fromRGB(255, 255, 255),
+        BorderTransparency = 0.08,
+        ShadowColor = Color3.fromRGB(0, 0, 0),
+        ShadowTransparency = 0.7,
+        GlowColor = Color3.fromRGB(255, 255, 255),
     }
 }
 
+-- Estado interno
 local NexusUI = {
     ScreenGui = nil,
     MainFrame = nil,
-    HeaderFrame = nil,
     TabContainer = nil,
     TabScroll = nil,
+    TabUnderline = nil,
     ContentContainer = nil,
+    ContentSlide = nil,
     TitleLabel = nil,
     ToggleButton = nil,
     Tabs = {},
@@ -156,10 +224,11 @@ local NexusUI = {
     RegisteredElements = {},
     Animating = false,
     TabButtons = {},
+    ActiveTabIndex = 1,
 }
 
 -- ============================================================================
--- UTILITÁRIOS
+-- FUNÇÕES UTILITÁRIAS (com estilo premium)
 -- ============================================================================
 local function AddCorner(instance, radius)
     local corner = Instance.new("UICorner")
@@ -168,16 +237,24 @@ local function AddCorner(instance, radius)
     return corner
 end
 
-local function AddStroke(instance, color, thickness)
+local function AddCornerSmooth(instance, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = instance
+    return corner
+end
+
+local function AddStroke(instance, color, thickness, transparency)
     local stroke = Instance.new("UIStroke")
     stroke.Color = color
-    stroke.Thickness = thickness
+    stroke.Thickness = thickness or 1
+    stroke.Transparency = transparency or 0
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Parent = instance
     return stroke
 end
 
-local function AddShadow(instance, size, color, transparency)
+local function AddShadow(instance, size, color, transparency, blur)
     local shadow = Instance.new("ImageLabel")
     shadow.Name = "Shadow"
     shadow.Size = UDim2.new(1, size * 2, 1, size * 2)
@@ -191,12 +268,26 @@ local function AddShadow(instance, size, color, transparency)
     return shadow
 end
 
+local function AddGlow(instance, color, size, transparency)
+    local glow = Instance.new("ImageLabel")
+    glow.Name = "Glow"
+    glow.Size = UDim2.new(1, size * 2, 1, size * 2)
+    glow.Position = UDim2.new(0.5, -size, 0.5, -size)
+    glow.BackgroundTransparency = 1
+    glow.Image = "rbxassetid://1316045115"
+    glow.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
+    glow.ImageTransparency = transparency or 0.8
+    glow.ZIndex = -1
+    glow.Parent = instance
+    return glow
+end
+
 local function PlayClickSound()
     task.spawn(function()
         local s = Instance.new("Sound")
         s.Name = "NexusClickSound"
         s.SoundId = LibraryConfig.ClickSoundId
-        s.Volume = 0.8
+        s.Volume = 0.5
         s.Parent = NexusUI.ScreenGui or CoreGui
         s:Play()
         s.Ended:Connect(function() s:Destroy() end)
@@ -237,7 +328,7 @@ local function MakeDraggable(frame, trigger)
 end
 
 -- ============================================================================
--- NOTIFICAÇÕES (modernas — slide da direita, barra de progresso)
+-- NOTIFICAÇÕES PREMIUM (com glassmorphism e slide)
 -- ============================================================================
 local function SetupNotifications()
     if NexusUI.NotifyContainer then return end
@@ -248,101 +339,99 @@ local function SetupNotifications()
     NexusUI.NotifyContainer.IgnoreGuiInset = true
 
     NexusUI.NotifyList = Instance.new("Frame")
-    NexusUI.NotifyList.Size = UDim2.new(0, 280, 1, 0)
-    NexusUI.NotifyList.AnchorPoint = Vector2.new(1, 1)
-    NexusUI.NotifyList.Position = UDim2.new(1, -14, 1, -20)
+    NexusUI.NotifyList.Size = UDim2.new(0, 340, 1, 0)
+    NexusUI.NotifyList.AnchorPoint = Vector2.new(0, 0)
+    NexusUI.NotifyList.Position = UDim2.new(0, 20, 0.8, 0)
     NexusUI.NotifyList.BackgroundTransparency = 1
     NexusUI.NotifyList.Parent = NexusUI.NotifyContainer
 
     local layout = Instance.new("UIListLayout")
     layout.Parent = NexusUI.NotifyList
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-    layout.Padding = UDim.new(0, 6)
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+    layout.Padding = UDim.new(0, 10)
 end
 
 function NexusUI.Notify(title, text, duration)
     SetupNotifications()
-    duration = duration or 3
-    local order = os.clock() * 1000
-
+    local order = - (os.clock() * 1000)
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, 0, 0, 64)
-    Frame.BackgroundColor3 = NexusUI.CurrentTheme.Header
-    Frame.BackgroundTransparency = 0.05
+    Frame.Size = UDim2.new(1, 0, 0, 65)
+    Frame.BackgroundColor3 = NexusUI.CurrentTheme.Background
+    Frame.BackgroundTransparency = 0.15
     Frame.BorderSizePixel = 0
     Frame.LayoutOrder = order
     Frame.Parent = NexusUI.NotifyList
-    Frame.Position = UDim2.new(1, 20, 0, 0)
-    AddCorner(Frame, 10)
-    AddShadow(Frame, 12, Color3.new(0,0,0), 0.55)
+    Frame.Position = UDim2.new(1, 0, 0, 0)
+    -- Glass effect
+    local glass = Instance.new("Frame")
+    glass.Size = UDim2.new(1, 0, 1, 0)
+    glass.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    glass.BackgroundTransparency = 0.03
+    glass.Parent = Frame
 
-    -- Barra de accent esquerda
-    local accentBar = Instance.new("Frame")
-    accentBar.Size = UDim2.new(0, 3, 1, -16)
-    accentBar.Position = UDim2.new(0, 0, 0, 8)
-    accentBar.BackgroundColor3 = NexusUI.CurrentTheme.Accent
-    accentBar.BorderSizePixel = 0
-    accentBar.Parent = Frame
-    AddCorner(accentBar, 2)
+    local Stroke = AddStroke(Frame, NexusUI.CurrentTheme.Accent, 1.5, 0.3)
+    AddCorner(Frame, 12)
+    AddShadow(Frame, 15, NexusUI.CurrentTheme.ShadowColor, NexusUI.CurrentTheme.ShadowTransparency)
 
-    local Stroke = AddStroke(Frame, NexusUI.CurrentTheme.Separator, 1)
+    -- Glow line on top
+    local glowLine = Instance.new("Frame")
+    glowLine.Size = UDim2.new(0.5, 0, 0, 2)
+    glowLine.Position = UDim2.new(0, 0, 0, 0)
+    glowLine.BackgroundColor3 = NexusUI.CurrentTheme.Accent
+    glowLine.BorderSizePixel = 0
+    glowLine.Parent = Frame
+    AddCorner(glowLine, 1)
+    TweenService:Create(glowLine, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+        Size = UDim2.new(1, 0, 0, 2)
+    }):Play()
 
     local TitleLbl = Instance.new("TextLabel")
     TitleLbl.Parent = Frame
-    TitleLbl.Size = UDim2.new(1, -22, 0, 18)
-    TitleLbl.Position = UDim2.new(0, 14, 0, 8)
+    TitleLbl.Size = UDim2.new(1, -10, 0, 22)
+    TitleLbl.Position = UDim2.new(0, 12, 0, 6)
     TitleLbl.BackgroundTransparency = 1
     TitleLbl.Text = title
     TitleLbl.Font = Enum.Font.GothamBlack
     TitleLbl.TextColor3 = NexusUI.CurrentTheme.Accent
-    TitleLbl.TextSize = 11
+    TitleLbl.TextSize = 14
     TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
 
     local MsgLbl = Instance.new("TextLabel")
     MsgLbl.Parent = Frame
-    MsgLbl.Size = UDim2.new(1, -22, 0, 26)
-    MsgLbl.Position = UDim2.new(0, 14, 0, 28)
+    MsgLbl.Size = UDim2.new(1, -12, 0, 30)
+    MsgLbl.Position = UDim2.new(0, 12, 0, 30)
     MsgLbl.BackgroundTransparency = 1
     MsgLbl.Text = text
-    MsgLbl.Font = Enum.Font.Gotham
-    MsgLbl.TextColor3 = NexusUI.CurrentTheme.TextDim
-    MsgLbl.TextSize = 11
+    MsgLbl.Font = Enum.Font.GothamSemibold
+    MsgLbl.TextColor3 = NexusUI.CurrentTheme.Text
+    MsgLbl.TextSize = 12
     MsgLbl.TextXAlignment = Enum.TextXAlignment.Left
     MsgLbl.TextWrapped = true
 
-    -- Barra de progresso
-    local progressBG = Instance.new("Frame")
-    progressBG.Size = UDim2.new(1, 0, 0, 2)
-    progressBG.Position = UDim2.new(0, 0, 1, -2)
-    progressBG.BackgroundColor3 = NexusUI.CurrentTheme.Separator
-    progressBG.BorderSizePixel = 0
-    progressBG.Parent = Frame
-    AddCorner(progressBG, 1)
+    Frame.BackgroundTransparency = 1
+    TitleLbl.TextTransparency = 1
+    MsgLbl.TextTransparency = 1
+    Stroke.Transparency = 1
 
-    local progressBar = Instance.new("Frame")
-    progressBar.Size = UDim2.new(1, 0, 1, 0)
-    progressBar.BackgroundColor3 = NexusUI.CurrentTheme.Accent
-    progressBar.BorderSizePixel = 0
-    progressBar.Parent = progressBG
-    AddCorner(progressBar, 1)
-
-    -- Entrada
-    TweenService:Create(Frame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-        Position = UDim2.new(0, 0, 0, 0)
+    TweenService:Create(Frame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = 0.15
     }):Play()
+    TweenService:Create(TitleLbl, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+    TweenService:Create(MsgLbl, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+    TweenService:Create(Stroke, TweenInfo.new(0.4), {Transparency = 0.3}):Play()
 
-    -- Progresso
-    TweenService:Create(progressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
-        Size = UDim2.new(0, 0, 1, 0)
-    }):Play()
-
-    task.delay(duration, function()
-        if Frame and Frame.Parent then
-            TweenService:Create(Frame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-                Position = UDim2.new(1, 20, 0, 0)
+    task.delay(duration or 3.5, function()
+        if Frame then
+            TweenService:Create(Frame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Position = UDim2.new(1, 0, 0, 0),
+                BackgroundTransparency = 1
             }):Play()
-            task.wait(0.25)
+            TweenService:Create(TitleLbl, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
+            TweenService:Create(MsgLbl, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
+            TweenService:Create(Stroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
+            task.wait(0.4)
             Frame:Destroy()
         end
     end)
@@ -352,37 +441,66 @@ end
 -- TEMA E SALVAMENTO
 -- ============================================================================
 local function ApplyThemeToUI()
+    local theme = NexusUI.CurrentTheme
+    
     if NexusUI.MainFrame then
-        NexusUI.MainFrame.BackgroundColor3 = NexusUI.CurrentTheme.Background
+        NexusUI.MainFrame.BackgroundColor3 = theme.Background
+        NexusUI.MainFrame.BackgroundTransparency = theme.BackgroundTransparency or 0.85
         local stroke = NexusUI.MainFrame:FindFirstChildOfClass("UIStroke")
-        if stroke then stroke.Color = NexusUI.CurrentTheme.Separator end
-    end
-    if NexusUI.HeaderFrame then
-        NexusUI.HeaderFrame.BackgroundColor3 = NexusUI.CurrentTheme.Header
+        if stroke then 
+            stroke.Color = theme.Accent
+            stroke.Transparency = 0.2
+        end
+        -- Glass blur
+        local glass = NexusUI.MainFrame:FindFirstChild("GlassBlur")
+        if not glass then
+            glass = Instance.new("Frame")
+            glass.Name = "GlassBlur"
+            glass.Size = UDim2.new(1, 0, 1, 0)
+            glass.BackgroundColor3 = Color3.fromRGB(255,255,255)
+            glass.BackgroundTransparency = 0.02
+            glass.ZIndex = -1
+            glass.Parent = NexusUI.MainFrame
+        end
     end
     if NexusUI.TitleLabel then
-        NexusUI.TitleLabel.TextColor3 = NexusUI.CurrentTheme.Text
-    end
-    if NexusUI.AccentLine then
-        NexusUI.AccentLine.BackgroundColor3 = NexusUI.CurrentTheme.Accent
+        NexusUI.TitleLabel.TextColor3 = theme.Accent
     end
     if NexusUI.TabContainer then
-        NexusUI.TabContainer.BackgroundColor3 = NexusUI.CurrentTheme.TabBG
+        NexusUI.TabContainer.BackgroundColor3 = theme.TabBG
+        NexusUI.TabContainer.BackgroundTransparency = theme.TabBGTransparency or 0.05
+        local stroke = NexusUI.TabContainer:FindFirstChildOfClass("UIStroke")
+        if stroke then
+            stroke.Color = theme.BorderColor
+            stroke.Transparency = theme.BorderTransparency or 0.12
+        end
     end
-    for _, tab in ipairs(NexusUI.Tabs) do
+    -- Abas
+    for i, tab in ipairs(NexusUI.Tabs) do
         if tab.Btn then
-            tab.Btn.TextColor3 = NexusUI.CurrentTheme.TextDim
-            tab.Btn.BackgroundColor3 = Color3.fromRGB(0,0,0)
-            tab.Btn.BackgroundTransparency = 1
-            if tab.Indicator then
-                tab.Indicator.BackgroundTransparency = 1
-            end
+            tab.Btn.BackgroundColor3 = theme.TabBG
+            tab.Btn.BackgroundTransparency = theme.TabBGTransparency or 0.05
+            tab.Btn.TextColor3 = theme.TextDim
             if tab.Frame and tab.Frame.Visible then
-                tab.Btn.TextColor3 = NexusUI.CurrentTheme.Accent
-                if tab.Indicator then
-                    tab.Indicator.BackgroundTransparency = 0
-                    tab.Indicator.BackgroundColor3 = NexusUI.CurrentTheme.Accent
-                end
+                tab.Btn.TextColor3 = theme.Text
+                tab.Btn.BackgroundColor3 = theme.Accent
+                tab.Btn.BackgroundTransparency = 0.15
+            end
+        end
+    end
+    -- Underline
+    if NexusUI.TabUnderline then
+        NexusUI.TabUnderline.BackgroundColor3 = theme.Accent
+    end
+    if NexusUI.NotifyContainer then
+        for _, notify in ipairs(NexusUI.NotifyContainer:GetDescendants()) do
+            if notify:IsA("TextLabel") and notify.Text == LibraryConfig.WindowTitle then
+                notify.TextColor3 = theme.Accent
+            elseif notify:IsA("Frame") and notify:FindFirstChildOfClass("UIStroke") then
+                notify.BackgroundColor3 = theme.Background
+                notify.BackgroundTransparency = 0.15
+                local stroke = notify:FindFirstChildOfClass("UIStroke")
+                if stroke then stroke.Color = theme.Accent end
             end
         end
     end
@@ -501,10 +619,11 @@ function NexusUI.ResetAllSettings()
 end
 
 -- ============================================================================
--- REORDENAÇÃO DAS ABAS
+-- REORDENAÇÃO DAS ABAS (com underline animado)
 -- ============================================================================
 local function ReorderTabs()
-    local normalTabs, fixedTabs = {}, {}
+    local normalTabs = {}
+    local fixedTabs = {}
     for _, tab in ipairs(NexusUI.Tabs) do
         if tab.IsFixed then
             table.insert(fixedTabs, tab)
@@ -513,23 +632,50 @@ local function ReorderTabs()
         end
     end
     local orderedTabs = {}
-    for _, tab in ipairs(normalTabs) do table.insert(orderedTabs, tab) end
-    for _, tab in ipairs(fixedTabs) do table.insert(orderedTabs, tab) end
+    for _, tab in ipairs(normalTabs) do
+        table.insert(orderedTabs, tab)
+    end
+    for _, tab in ipairs(fixedTabs) do
+        table.insert(orderedTabs, tab)
+    end
 
-    local xOffset = 6
-    for _, tab in ipairs(orderedTabs) do
+    local xOffset = 8
+    for i, tab in ipairs(orderedTabs) do
         local btn = tab.Btn
+        local width = btn.Size.X.Offset or 90
         btn.Position = UDim2.new(0, xOffset, 0, 4)
-        xOffset = xOffset + btn.Size.X.Offset + 2
+        xOffset = xOffset + width + 4
     end
 
     if NexusUI.TabScroll then
-        NexusUI.TabScroll.CanvasSize = UDim2.new(0, xOffset + 10, 0, 0)
+        NexusUI.TabScroll.CanvasSize = UDim2.new(0, xOffset + 20, 0, 0)
+    end
+    
+    -- Atualiza underline
+    UpdateUnderline()
+end
+
+local function UpdateUnderline()
+    if not NexusUI.TabUnderline then return end
+    local activeBtn = nil
+    for i, tab in ipairs(NexusUI.Tabs) do
+        if tab.Frame and tab.Frame.Visible then
+            activeBtn = tab.Btn
+            NexusUI.ActiveTabIndex = i
+            break
+        end
+    end
+    if activeBtn then
+        local btnPos = activeBtn.Position
+        local btnSize = activeBtn.Size
+        NexusUI.TabUnderline.Position = UDim2.new(btnPos.X.Scale, btnPos.X.Offset + 4, 1, -2)
+        NexusUI.TabUnderline.Size = UDim2.new(0, btnSize.X.Offset - 8, 0, 2)
+        NexusUI.TabUnderline.BackgroundTransparency = 0
     end
 end
 
 -- ============================================================================
--- CRIAÇÃO DA JANELA
+-- CRIAÇÃO DA JANELA (com glassmorphism e design premium)
 -- ============================================================================
 function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, configFileName, includeDefaultCredits)
     if includeDefaultSettings == nil then includeDefaultSettings = LibraryConfig.IncludeDefaultSettingsTab end
@@ -546,123 +692,122 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     NexusUI.ScreenGui.Parent = CoreGui
     NexusUI.ScreenGui.ResetOnSpawn = false
     NexusUI.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    NexusUI.ScreenGui.IgnoreGuiInset = true
 
-    -- Toggle button
+    -- Botão toggle (com efeito de brilho)
     local toggleBtn = Instance.new("ImageButton")
     toggleBtn.Name = "ToggleButton"
     toggleBtn.Parent = NexusUI.ScreenGui
-    toggleBtn.Size = UDim2.new(0, 38, 0, 38)
-    toggleBtn.Position = UDim2.new(0.08, 0, 0.08, 0)
-    toggleBtn.BackgroundColor3 = NexusUI.CurrentTheme.Header
-    toggleBtn.BackgroundTransparency = 0.1
+    toggleBtn.Size = UDim2.new(0, 44, 0, 44)
+    toggleBtn.Position = UDim2.new(0.1, 0, 0.1, 0)
+    toggleBtn.BackgroundTransparency = 0
+    toggleBtn.BackgroundColor3 = NexusUI.CurrentTheme.Background
+    toggleBtn.BackgroundTransparency = 0.5
     toggleBtn.Image = toggleImageId or "rbxassetid://108999865215827"
-    toggleBtn.ImageColor3 = NexusUI.CurrentTheme.Accent
+    toggleBtn.ImageColor3 = Color3.new(1, 1, 1)
     toggleBtn.ScaleType = Enum.ScaleType.Fit
     toggleBtn.ZIndex = 100
-    AddCorner(toggleBtn, 10)
-    AddStroke(toggleBtn, NexusUI.CurrentTheme.Separator, 1)
-    AddShadow(toggleBtn, 14, Color3.new(0,0,0), 0.6)
+    AddCorner(toggleBtn, 12)
+    AddStroke(toggleBtn, NexusUI.CurrentTheme.Accent, 1.5, 0.3)
+    AddShadow(toggleBtn, 15, NexusUI.CurrentTheme.ShadowColor, NexusUI.CurrentTheme.ShadowTransparency)
     MakeDraggable(toggleBtn, toggleBtn)
 
     toggleBtn.MouseEnter:Connect(function()
-        TweenService:Create(toggleBtn, TweenInfo.new(0.2), {ImageColor3 = Color3.new(1,1,1)}):Play()
+        TweenService:Create(toggleBtn, TweenInfo.new(0.3), {ImageColor3 = NexusUI.CurrentTheme.Accent}):Play()
+        TweenService:Create(toggleBtn, TweenInfo.new(0.3), {BackgroundTransparency = 0.3}):Play()
     end)
     toggleBtn.MouseLeave:Connect(function()
-        TweenService:Create(toggleBtn, TweenInfo.new(0.2), {ImageColor3 = NexusUI.CurrentTheme.Accent}):Play()
+        TweenService:Create(toggleBtn, TweenInfo.new(0.3), {ImageColor3 = Color3.new(1,1,1)}):Play()
+        TweenService:Create(toggleBtn, TweenInfo.new(0.3), {BackgroundTransparency = 0.5}):Play()
     end)
 
-    -- Frame principal
+    -- Frame principal (glassmorphism)
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     mainFrame.Size = UDim2.new(0, 0, 0, 0)
     mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     mainFrame.BackgroundColor3 = NexusUI.CurrentTheme.Background
+    mainFrame.BackgroundTransparency = NexusUI.CurrentTheme.BackgroundTransparency or 0.85
     mainFrame.Parent = NexusUI.ScreenGui
     mainFrame.ClipsDescendants = true
     mainFrame.Visible = true
-    AddCorner(mainFrame, 14)
-    AddStroke(mainFrame, NexusUI.CurrentTheme.Separator, 1)
-    AddShadow(mainFrame, 28, Color3.new(0,0,0), 0.7)
+    AddCorner(mainFrame, 16)
+    AddStroke(mainFrame, NexusUI.CurrentTheme.Accent, 1.5, 0.2)
+    AddShadow(mainFrame, 30, NexusUI.CurrentTheme.ShadowColor, NexusUI.CurrentTheme.ShadowTransparency)
 
-    -- Header (barra do topo com título)
-    local headerFrame = Instance.new("Frame")
-    headerFrame.Name = "HeaderFrame"
-    headerFrame.Size = UDim2.new(1, 0, 0, 36)
-    headerFrame.Position = UDim2.new(0, 0, 0, 0)
-    headerFrame.BackgroundColor3 = NexusUI.CurrentTheme.Header
-    headerFrame.BorderSizePixel = 0
-    headerFrame.ZIndex = 2
-    headerFrame.Parent = mainFrame
-    MakeDraggable(mainFrame, headerFrame)
+    -- Glass blur overlay
+    local glassBlur = Instance.new("Frame")
+    glassBlur.Name = "GlassBlur"
+    glassBlur.Size = UDim2.new(1, 0, 1, 0)
+    glassBlur.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    glassBlur.BackgroundTransparency = 0.02
+    glassBlur.ZIndex = -1
+    glassBlur.Parent = mainFrame
 
-    -- Linha accent embaixo do header
-    local accentLine = Instance.new("Frame")
-    accentLine.Name = "AccentLine"
-    accentLine.Size = UDim2.new(1, 0, 0, 2)
-    accentLine.Position = UDim2.new(0, 0, 1, -2)
-    accentLine.BackgroundColor3 = NexusUI.CurrentTheme.Accent
-    accentLine.BorderSizePixel = 0
-    accentLine.Parent = headerFrame
-    NexusUI.AccentLine = accentLine
-
-    -- Dot decorativo accent
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 6, 0, 6)
-    dot.Position = UDim2.new(0, 12, 0.5, -3)
-    dot.BackgroundColor3 = NexusUI.CurrentTheme.Accent
-    dot.BorderSizePixel = 0
-    dot.Parent = headerFrame
-    AddCorner(dot, 3)
-
-    -- Título
+    -- Título com decoração
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "TitleLabel"
-    titleLabel.Size = UDim2.new(1, -60, 1, 0)
-    titleLabel.Position = UDim2.new(0, 26, 0, 0)
+    titleLabel.Size = UDim2.new(1, 0, 0, 34)
+    titleLabel.Position = UDim2.new(0, 0, 0, 0)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = title
-    titleLabel.TextColor3 = NexusUI.CurrentTheme.Text
+    titleLabel.TextColor3 = NexusUI.CurrentTheme.Accent
     titleLabel.Font = Enum.Font.GothamBlack
-    titleLabel.TextSize = 12
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.ZIndex = 2
-    titleLabel.Parent = headerFrame
+    titleLabel.TextSize = 16
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+    titleLabel.Parent = mainFrame
+    
+    -- Título underline
+    local titleUnderline = Instance.new("Frame")
+    titleUnderline.Size = UDim2.new(0.3, 0, 0, 2)
+    titleUnderline.Position = UDim2.new(0.5, -60, 1, -2)
+    titleUnderline.AnchorPoint = Vector2.new(0.5, 0)
+    titleUnderline.BackgroundColor3 = NexusUI.CurrentTheme.Accent
+    titleUnderline.BorderSizePixel = 0
+    titleUnderline.BackgroundTransparency = 0.3
+    titleUnderline.Parent = titleLabel
+    AddCorner(titleUnderline, 1)
 
-    -- Container das abas (scroll horizontal)
+    -- Container das abas
     local tabContainer = Instance.new("Frame")
     tabContainer.Name = "TabContainer"
-    tabContainer.Size = UDim2.new(1, 0, 0, 34)
-    tabContainer.Position = UDim2.new(0, 0, 0, 36)
+    tabContainer.Size = UDim2.new(1, 0, 0, 38)
+    tabContainer.Position = UDim2.new(0, 0, 0, 34)
     tabContainer.BackgroundColor3 = NexusUI.CurrentTheme.TabBG
-    tabContainer.BackgroundTransparency = 0
-    tabContainer.BorderSizePixel = 0
+    tabContainer.BackgroundTransparency = NexusUI.CurrentTheme.TabBGTransparency or 0.05
     tabContainer.Parent = mainFrame
-
-    -- Separador embaixo das abas
-    local tabSeparator = Instance.new("Frame")
-    tabSeparator.Size = UDim2.new(1, 0, 0, 1)
-    tabSeparator.Position = UDim2.new(0, 0, 1, -1)
-    tabSeparator.BackgroundColor3 = NexusUI.CurrentTheme.Separator
-    tabSeparator.BorderSizePixel = 0
-    tabSeparator.Parent = tabContainer
+    AddCorner(tabContainer, 8)
+    AddStroke(tabContainer, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.12)
 
     local tabScroll = Instance.new("ScrollingFrame")
     tabScroll.Name = "TabScroll"
-    tabScroll.Size = UDim2.new(1, 0, 1, -1)
+    tabScroll.Size = UDim2.new(1, -4, 1, 0)
+    tabScroll.Position = UDim2.new(0, 2, 0, 0)
     tabScroll.BackgroundTransparency = 1
-    tabScroll.ScrollBarThickness = 0
+    tabScroll.ScrollBarThickness = 2
+    tabScroll.ScrollBarImageColor3 = NexusUI.CurrentTheme.Accent
+    tabScroll.ScrollBarImageTransparency = 0.3
     tabScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     tabScroll.AutomaticCanvasSize = Enum.AutomaticSize.None
     tabScroll.ScrollingDirection = Enum.ScrollingDirection.X
     tabScroll.Parent = tabContainer
 
+    -- Underline animado
+    local tabUnderline = Instance.new("Frame")
+    tabUnderline.Name = "TabUnderline"
+    tabUnderline.Size = UDim2.new(0, 0, 0, 2)
+    tabUnderline.Position = UDim2.new(0, 0, 1, -2)
+    tabUnderline.BackgroundColor3 = NexusUI.CurrentTheme.Accent
+    tabUnderline.BorderSizePixel = 0
+    tabUnderline.BackgroundTransparency = 0
+    tabUnderline.Parent = tabContainer
+    AddCorner(tabUnderline, 1)
+
     -- Container do conteúdo
     local content = Instance.new("Frame")
     content.Name = "ContentContainer"
-    content.Size = UDim2.new(1, -8, 1, -78)
-    content.Position = UDim2.new(0, 4, 0, 72)
+    content.Size = UDim2.new(1, -12, 1, -80)
+    content.Position = UDim2.new(0, 6, 0, 76)
     content.BackgroundTransparency = 1
     content.ClipsDescendants = true
     content.Parent = mainFrame
@@ -684,41 +829,34 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     end
 
     NexusUI.MainFrame = mainFrame
-    NexusUI.HeaderFrame = headerFrame
     NexusUI.TabContainer = tabContainer
     NexusUI.TabScroll = tabScroll
+    NexusUI.TabUnderline = tabUnderline
     NexusUI.ContentContainer = content
     NexusUI.ContentSlide = contentSlide
     NexusUI.TitleLabel = titleLabel
     NexusUI.ToggleButton = toggleBtn
     NexusUI.Tabs = {}
+    NexusUI.ActiveTabIndex = 1
 
     toggleBtn.MouseButton1Click:Connect(function()
         PlayClickSound()
         if mainFrame.Visible then
-            TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-                Size = UDim2.new(0, 0, 0, 0),
-                BackgroundTransparency = 1
-            }):Play()
-            task.wait(0.2)
             mainFrame.Visible = false
         else
             mainFrame.Visible = true
             mainFrame.Size = UDim2.new(0, 0, 0, 0)
             mainFrame.BackgroundTransparency = 1
-            TweenService:Create(mainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, 520, 0, 360),
-                BackgroundTransparency = 0
+            TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 540, 0, 390),
+                BackgroundTransparency = NexusUI.CurrentTheme.BackgroundTransparency or 0.85
             }):Play()
         end
     end)
 
-    -- Animação de entrada
     mainFrame.Size = UDim2.new(0, 0, 0, 0)
-    mainFrame.BackgroundTransparency = 1
-    TweenService:Create(mainFrame, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 520, 0, 360),
-        BackgroundTransparency = 0
+    TweenService:Create(mainFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 540, 0, 390)
     }):Play()
 
     ApplyThemeToUI()
@@ -743,16 +881,18 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
         local creditsTab = NexusUI.CreateTab("✨ CREDITS", true)
         NexusUI.CreateSection(creditsTab, "DEVELOPERS & CONTRIBUTORS")
         local scrollContainer = Instance.new("ScrollingFrame")
-        scrollContainer.Size = UDim2.new(1, -8, 0, 280)
-        scrollContainer.BackgroundTransparency = 1
+        scrollContainer.Size = UDim2.new(1, -10, 0, 280)
+        scrollContainer.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+        scrollContainer.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
         scrollContainer.ScrollBarThickness = 3
-        scrollContainer.ScrollBarImageColor3 = NexusUI.CurrentTheme.Accent
         scrollContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
         scrollContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
         scrollContainer.Parent = creditsTab
+        AddCorner(scrollContainer, 10)
+        AddStroke(scrollContainer, NexusUI.CurrentTheme.BorderColor, 1, 0.08)
 
         local containerLayout = Instance.new("UIListLayout")
-        containerLayout.Padding = UDim.new(0, 6)
+        containerLayout.Padding = UDim.new(0, 8)
         containerLayout.SortOrder = Enum.SortOrder.LayoutOrder
         containerLayout.Parent = scrollContainer
 
@@ -760,74 +900,86 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     end
 
     ReorderTabs()
+    task.wait(0.1)
+    UpdateUnderline()
+
     return NexusUI
 end
 
 -- ============================================================================
--- CRIAÇÃO DE ABAS (horizontais com slide)
+-- CRIAÇÃO DE ABAS (com underline animado)
 -- ============================================================================
 function NexusUI.CreateTab(name, isFixed)
     if not NexusUI.MainFrame then error("CreateWindow must be called before CreateTab") end
 
-    local textWidth = #name * 8 + 24
-    if textWidth < 72 then textWidth = 72 end
-
+    local textWidth = math.max(#name * 9 + 30, 80)
+    
     local tabBtn = Instance.new("TextButton")
-    tabBtn.Size = UDim2.new(0, textWidth, 0, 26)
-    tabBtn.BackgroundTransparency = 1
+    tabBtn.Size = UDim2.new(0, textWidth, 0, 30)
+    tabBtn.Position = UDim2.new(0, 8 + (#NexusUI.Tabs * (textWidth + 4)), 0, 4)
+    tabBtn.BackgroundColor3 = NexusUI.CurrentTheme.TabBG
+    tabBtn.BackgroundTransparency = NexusUI.CurrentTheme.TabBGTransparency or 0.05
     tabBtn.Text = name
     tabBtn.Font = Enum.Font.GothamSemibold
     tabBtn.TextColor3 = NexusUI.CurrentTheme.TextDim
-    tabBtn.TextSize = 11
+    tabBtn.TextSize = 13
     tabBtn.AutoButtonColor = false
     tabBtn.Parent = NexusUI.TabScroll
-
-    -- Indicador de aba ativa (linha embaixo)
-    local indicator = Instance.new("Frame")
-    indicator.Size = UDim2.new(0.7, 0, 0, 2)
-    indicator.AnchorPoint = Vector2.new(0.5, 1)
-    indicator.Position = UDim2.new(0.5, 0, 1, 0)
-    indicator.BackgroundColor3 = NexusUI.CurrentTheme.Accent
-    indicator.BackgroundTransparency = 1
-    indicator.BorderSizePixel = 0
-    indicator.Parent = tabBtn
-    AddCorner(indicator, 1)
+    AddCorner(tabBtn, 8)
 
     tabBtn.MouseEnter:Connect(function()
-        TweenService:Create(tabBtn, TweenInfo.new(0.15), {TextColor3 = NexusUI.CurrentTheme.Text}):Play()
+        if not tabBtn.Frame or not tabBtn.Frame.Visible then
+            TweenService:Create(tabBtn, TweenInfo.new(0.2), {TextColor3 = NexusUI.CurrentTheme.Text}):Play()
+            TweenService:Create(tabBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
+        end
     end)
     tabBtn.MouseLeave:Connect(function()
-        if not (tabBtn._active) then
-            TweenService:Create(tabBtn, TweenInfo.new(0.15), {TextColor3 = NexusUI.CurrentTheme.TextDim}):Play()
+        if not tabBtn.Frame or not tabBtn.Frame.Visible then
+            TweenService:Create(tabBtn, TweenInfo.new(0.2), {TextColor3 = NexusUI.CurrentTheme.TextDim}):Play()
+            TweenService:Create(tabBtn, TweenInfo.new(0.2), {BackgroundTransparency = NexusUI.CurrentTheme.TabBGTransparency or 0.05}):Play()
         end
     end)
 
-    -- Frame da aba
     local tabFrame = Instance.new("ScrollingFrame")
     tabFrame.Size = UDim2.new(1, 0, 1, 0)
     tabFrame.Position = UDim2.new(0, 0, 0, 0)
     tabFrame.BackgroundTransparency = 1
-    tabFrame.ScrollBarThickness = 2
+    tabFrame.ScrollBarThickness = 3
     tabFrame.ScrollBarImageColor3 = NexusUI.CurrentTheme.Accent
+    tabFrame.ScrollBarImageTransparency = 0.3
     tabFrame.Visible = false
     tabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
     tabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     tabFrame.Parent = NexusUI.ContentSlide
 
     local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 5)
+    layout.Padding = UDim.new(0, 8)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = tabFrame
 
     local padding = Instance.new("UIPadding")
     padding.PaddingTop = UDim.new(0, 6)
-    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingLeft = UDim.new(0, 6)
     padding.PaddingBottom = UDim.new(0, 6)
-    padding.PaddingRight = UDim.new(0, 4)
     padding.Parent = tabFrame
 
-    local tabEntry = { Btn = tabBtn, Frame = tabFrame, IsFixed = isFixed or false, Indicator = indicator }
+    local tabEntry = { Btn = tabBtn, Frame = tabFrame, IsFixed = isFixed or false }
     table.insert(NexusUI.Tabs, tabEntry)
+
+    -- Ativa a primeira aba automaticamente se nenhuma estiver visível
+    local anyVisible = false
+    for _, t in ipairs(NexusUI.Tabs) do
+        if t.Frame.Visible then anyVisible = true break end
+    end
+    if not anyVisible and #NexusUI.Tabs == 1 then
+        tabFrame.Visible = true
+        tabBtn.TextColor3 = NexusUI.CurrentTheme.Text
+        tabBtn.BackgroundColor3 = NexusUI.CurrentTheme.Accent
+        tabBtn.BackgroundTransparency = 0.15
+        NexusUI.ActiveTabIndex = 1
+        task.wait(0.1)
+        UpdateUnderline()
+    end
 
     tabBtn.MouseButton1Click:Connect(function()
         PlayClickSound()
@@ -835,26 +987,32 @@ function NexusUI.CreateTab(name, isFixed)
 
         for _, t in ipairs(NexusUI.Tabs) do
             t.Frame.Visible = false
-            t.Btn._active = false
-            TweenService:Create(t.Btn, TweenInfo.new(0.2), {TextColor3 = NexusUI.CurrentTheme.TextDim}):Play()
-            if t.Indicator then
-                TweenService:Create(t.Indicator, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-            end
+            TweenService:Create(t.Btn, TweenInfo.new(0.3), {
+                TextColor3 = NexusUI.CurrentTheme.TextDim,
+                BackgroundColor3 = NexusUI.CurrentTheme.TabBG,
+                BackgroundTransparency = NexusUI.CurrentTheme.TabBGTransparency or 0.05
+            }):Play()
         end
 
-        tabBtn._active = true
         tabFrame.Visible = true
-        TweenService:Create(tabBtn, TweenInfo.new(0.2), {TextColor3 = NexusUI.CurrentTheme.Accent}):Play()
-        TweenService:Create(indicator, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
-
-        tabFrame.Position = UDim2.new(0.06, 0, 0, 0)
-        tabFrame.GroupTransparency = 1
-        NexusUI.Animating = true
-        TweenService:Create(tabFrame, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Position = UDim2.new(0, 0, 0, 0),
-            GroupTransparency = 0
+        TweenService:Create(tabBtn, TweenInfo.new(0.3), {
+            TextColor3 = NexusUI.CurrentTheme.Text,
+            BackgroundColor3 = NexusUI.CurrentTheme.Accent,
+            BackgroundTransparency = 0.15
         }):Play()
-        task.wait(0.22)
+
+        -- Slide animation
+        tabFrame.Position = UDim2.new(0.3, 0, 0, 0)
+        tabFrame.BackgroundTransparency = 1
+        NexusUI.Animating = true
+        TweenService:Create(tabFrame, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0, 0, 0, 0)
+        }):Play()
+        
+        -- Update underline
+        UpdateUnderline()
+        
+        task.wait(0.35)
         NexusUI.Animating = false
     end)
 
@@ -863,41 +1021,40 @@ function NexusUI.CreateTab(name, isFixed)
 end
 
 -- ============================================================================
--- ELEMENTOS DE UI
+-- ELEMENTOS DE UI (com design premium e animações)
 -- ============================================================================
 function NexusUI.CreateSection(parent, text)
-    local wrapper = Instance.new("Frame")
-    wrapper.Size = UDim2.new(1, -8, 0, 22)
-    wrapper.BackgroundTransparency = 1
-    wrapper.Parent = parent
-
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -8, 1, 0)
-    label.Position = UDim2.new(0, 0, 0, 0)
+    label.Size = UDim2.new(1, -10, 0, 22)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = NexusUI.CurrentTheme.Accent
     label.Font = Enum.Font.GothamBold
-    label.TextSize = 10
+    label.TextSize = 12
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = wrapper
-
-    local sep = Instance.new("Frame")
-    sep.Size = UDim2.new(1, 0, 0, 1)
-    sep.Position = UDim2.new(0, 0, 1, -1)
-    sep.BackgroundColor3 = NexusUI.CurrentTheme.Separator
-    sep.BorderSizePixel = 0
-    sep.Parent = wrapper
-
+    label.Parent = parent
+    
+    -- Decorative line
+    local line = Instance.new("Frame")
+    line.Size = UDim2.new(0.3, 0, 0, 1.5)
+    line.Position = UDim2.new(0, 0, 1, 2)
+    line.BackgroundColor3 = NexusUI.CurrentTheme.Accent
+    line.BackgroundTransparency = 0.3
+    line.Parent = label
+    AddCorner(line, 1)
+    
     return label
 end
 
 function NexusUI.CreateToggle(parent, text, default, callback, id)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -8, 0, 34)
+    frame.Size = UDim2.new(1, -10, 0, 36)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+    frame.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     frame.Parent = parent
-    AddCorner(frame, 8)
+    AddCorner(frame, 10)
+    AddStroke(frame, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
+    AddShadow(frame, 8, NexusUI.CurrentTheme.ShadowColor, 0.2)
 
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 1, 0)
@@ -906,38 +1063,50 @@ function NexusUI.CreateToggle(parent, text, default, callback, id)
     btn.Parent = frame
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -58, 1, 0)
-    label.Position = UDim2.new(0, 12, 0, 0)
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Position = UDim2.new(0, 14, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = NexusUI.CurrentTheme.Text
     label.Font = Enum.Font.GothamSemibold
-    label.TextSize = 12
+    label.TextSize = 13
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
 
-    -- Pill toggle moderno
-    local pillBG = Instance.new("Frame")
-    pillBG.Size = UDim2.new(0, 36, 0, 18)
-    pillBG.Position = UDim2.new(1, -48, 0.5, -9)
-    pillBG.BackgroundColor3 = default and NexusUI.CurrentTheme.Accent or NexusUI.CurrentTheme.Separator
-    pillBG.Parent = frame
-    AddCorner(pillBG, 9)
-
-    local pillCircle = Instance.new("Frame")
-    pillCircle.Size = UDim2.new(0, 12, 0, 12)
-    pillCircle.Position = default and UDim2.new(1, -15, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)
-    pillCircle.BackgroundColor3 = Color3.new(1, 1, 1)
-    pillCircle.Parent = pillBG
-    AddCorner(pillCircle, 6)
+    -- Switch track
+    local track = Instance.new("Frame")
+    track.Size = UDim2.new(0, 40, 0, 22)
+    track.Position = UDim2.new(1, -50, 0.5, -11)
+    track.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    track.BackgroundTransparency = 0.3
+    track.Parent = frame
+    AddCorner(track, 11)
+    
+    -- Switch thumb
+    local thumb = Instance.new("Frame")
+    thumb.Size = UDim2.new(0, 18, 0, 18)
+    thumb.Position = UDim2.new(0, 2, 0.5, -9)
+    thumb.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+    thumb.Parent = track
+    AddCorner(thumb, 9)
+    AddShadow(thumb, 6, Color3.new(0,0,0), 0.3)
 
     local toggled = default
     local setter = function(state)
         toggled = state
-        local targetColor = toggled and NexusUI.CurrentTheme.Accent or NexusUI.CurrentTheme.Separator
-        local targetPos = toggled and UDim2.new(1, -15, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)
-        TweenService:Create(pillBG, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
-        TweenService:Create(pillCircle, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {Position = targetPos}):Play()
+        local targetColor = toggled and NexusUI.CurrentTheme.Accent or Color3.fromRGB(60, 60, 70)
+        local thumbColor = toggled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 200, 200)
+        local thumbPos = toggled and UDim2.new(0, 20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
+        
+        TweenService:Create(track, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+            BackgroundColor3 = targetColor,
+            BackgroundTransparency = toggled and 0.2 or 0.3
+        }):Play()
+        TweenService:Create(thumb, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+            Position = thumbPos,
+            BackgroundColor3 = thumbColor
+        }):Play()
+        
         if callback then callback(toggled) end
         if id then
             NexusUI.Config[id] = toggled
@@ -949,11 +1118,17 @@ function NexusUI.CreateToggle(parent, text, default, callback, id)
         PlayClickSound()
         setter(not toggled)
     end)
+
+    -- Hover effect
     btn.MouseEnter:Connect(function()
-        TweenService:Create(frame, TweenInfo.new(0.15), {BackgroundColor3 = NexusUI.CurrentTheme.ItemHover}):Play()
+        TweenService:Create(frame, TweenInfo.new(0.2), {
+            BackgroundTransparency = (NexusUI.CurrentTheme.ItemBGTransparency or 0.06) - 0.03
+        }):Play()
     end)
     btn.MouseLeave:Connect(function()
-        TweenService:Create(frame, TweenInfo.new(0.15), {BackgroundColor3 = NexusUI.CurrentTheme.ItemBG}):Play()
+        TweenService:Create(frame, TweenInfo.new(0.2), {
+            BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
+        }):Play()
     end)
 
     if id then
@@ -970,10 +1145,13 @@ end
 
 function NexusUI.CreateButton(parent, text, callback)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -8, 0, 34)
+    frame.Size = UDim2.new(1, -10, 0, 36)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+    frame.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     frame.Parent = parent
-    AddCorner(frame, 8)
+    AddCorner(frame, 10)
+    AddStroke(frame, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
+    AddShadow(frame, 8, NexusUI.CurrentTheme.ShadowColor, 0.2)
 
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 1, 0)
@@ -981,22 +1159,39 @@ function NexusUI.CreateButton(parent, text, callback)
     btn.Text = text
     btn.TextColor3 = NexusUI.CurrentTheme.Accent
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 12
+    btn.TextSize = 13
     btn.Parent = frame
 
     btn.MouseEnter:Connect(function()
-        TweenService:Create(frame, TweenInfo.new(0.15), {BackgroundColor3 = NexusUI.CurrentTheme.ItemHover}):Play()
-        TweenService:Create(btn, TweenInfo.new(0.15), {TextColor3 = NexusUI.CurrentTheme.Text}):Play()
+        TweenService:Create(frame, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.03,
+            BackgroundColor3 = NexusUI.CurrentTheme.Accent
+        }):Play()
+        TweenService:Create(btn, TweenInfo.new(0.2), {
+            TextColor3 = Color3.fromRGB(255, 255, 255)
+        }):Play()
     end)
     btn.MouseLeave:Connect(function()
-        TweenService:Create(frame, TweenInfo.new(0.15), {BackgroundColor3 = NexusUI.CurrentTheme.ItemBG}):Play()
-        TweenService:Create(btn, TweenInfo.new(0.15), {TextColor3 = NexusUI.CurrentTheme.Accent}):Play()
+        TweenService:Create(frame, TweenInfo.new(0.2), {
+            BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06,
+            BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+        }):Play()
+        TweenService:Create(btn, TweenInfo.new(0.2), {
+            TextColor3 = NexusUI.CurrentTheme.Accent
+        }):Play()
     end)
+
     btn.MouseButton1Click:Connect(function()
         PlayClickSound()
-        TweenService:Create(frame, TweenInfo.new(0.08), {BackgroundColor3 = NexusUI.CurrentTheme.AccentDark}):Play()
-        task.wait(0.08)
-        TweenService:Create(frame, TweenInfo.new(0.15), {BackgroundColor3 = NexusUI.CurrentTheme.ItemBG}):Play()
+        TweenService:Create(frame, TweenInfo.new(0.1), {
+            BackgroundTransparency = 0.2,
+            BackgroundColor3 = NexusUI.CurrentTheme.AccentDark
+        }):Play()
+        task.wait(0.1)
+        TweenService:Create(frame, TweenInfo.new(0.1), {
+            BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06,
+            BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+        }):Play()
         if callback then callback(btn, frame) end
     end)
     return btn
@@ -1004,13 +1199,15 @@ end
 
 function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback, id)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -8, 0, 34)
+    frame.Size = UDim2.new(1, -10, 0, 36)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+    frame.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     frame.Parent = parent
-    AddCorner(frame, 8)
+    AddCorner(frame, 10)
+    AddStroke(frame, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.48, 0, 1, 0)
+    label.Size = UDim2.new(0.4, 0, 1, 0)
     label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
@@ -1021,37 +1218,59 @@ function NexusUI.CreateInput(parent, text, placeholder, defaultVal, callback, id
     label.Parent = frame
 
     local box = Instance.new("TextBox")
-    box.Size = UDim2.new(0.44, 0, 0.68, 0)
-    box.Position = UDim2.new(0.53, 0, 0.16, 0)
+    box.Size = UDim2.new(0.5, 0, 0.7, 0)
+    box.Position = UDim2.new(0.45, 0, 0.15, 0)
     box.BackgroundColor3 = NexusUI.CurrentTheme.InputBG
+    box.BackgroundTransparency = NexusUI.CurrentTheme.InputBGTransparency or 0.05
     box.Text = defaultVal or ""
     box.PlaceholderText = placeholder
-    box.PlaceholderColor3 = NexusUI.CurrentTheme.TextDim
     box.TextColor3 = NexusUI.CurrentTheme.Accent
     box.Font = Enum.Font.GothamBold
-    box.TextSize = 11
+    box.TextSize = 12
     box.Parent = frame
-    AddCorner(box, 6)
-    local stroke = AddStroke(box, NexusUI.CurrentTheme.Separator, 1)
+    AddCorner(box, 8)
+    local stroke = AddStroke(box, NexusUI.CurrentTheme.BorderColor, 1, 0.1)
 
     local setter = function(value)
         box.Text = value
         if callback then callback(value) end
-        if id then NexusUI.Config[id] = value; SaveUIConfig() end
+        if id then
+            NexusUI.Config[id] = value
+            SaveUIConfig()
+        end
     end
 
     box.Focused:Connect(function()
-        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = NexusUI.CurrentTheme.Accent}):Play()
+        TweenService:Create(stroke, TweenInfo.new(0.2), {
+            Color = NexusUI.CurrentTheme.Accent,
+            Transparency = 0
+        }):Play()
+        TweenService:Create(box, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.02
+        }):Play()
     end)
     box.FocusLost:Connect(function()
-        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = NexusUI.CurrentTheme.Separator}):Play()
+        TweenService:Create(stroke, TweenInfo.new(0.2), {
+            Color = NexusUI.CurrentTheme.BorderColor,
+            Transparency = 0.1
+        }):Play()
+        TweenService:Create(box, TweenInfo.new(0.2), {
+            BackgroundTransparency = NexusUI.CurrentTheme.InputBGTransparency or 0.05
+        }):Play()
         if callback then callback(box.Text) end
-        if id then NexusUI.Config[id] = box.Text; SaveUIConfig() end
+        if id then
+            NexusUI.Config[id] = box.Text
+            SaveUIConfig()
+        end
     end)
 
     if id then
         local saved = NexusUI.Config[id]
-        if saved ~= nil then setter(saved) else NexusUI.Config[id] = defaultVal end
+        if saved ~= nil then
+            setter(saved)
+        else
+            NexusUI.Config[id] = defaultVal
+        end
         RegisterElement(id, "input", setter, defaultVal)
     end
     return box, setter
@@ -1059,13 +1278,15 @@ end
 
 function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -8, 0, 34)
+    frame.Size = UDim2.new(1, -10, 0, 36)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+    frame.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     frame.Parent = parent
-    AddCorner(frame, 8)
+    AddCorner(frame, 10)
+    AddStroke(frame, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.Size = UDim2.new(0.5, 0, 1, 0)
     label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
@@ -1076,23 +1297,25 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
     label.Parent = frame
 
     local keyBtn = Instance.new("TextButton")
-    keyBtn.Size = UDim2.new(0.3, 0, 0.68, 0)
-    keyBtn.Position = UDim2.new(0.67, 0, 0.16, 0)
+    keyBtn.Size = UDim2.new(0.35, 0, 0.7, 0)
+    keyBtn.Position = UDim2.new(0.6, 0, 0.15, 0)
     keyBtn.BackgroundColor3 = NexusUI.CurrentTheme.InputBG
+    keyBtn.BackgroundTransparency = NexusUI.CurrentTheme.InputBGTransparency or 0.05
     keyBtn.Text = defaultKey
     keyBtn.TextColor3 = NexusUI.CurrentTheme.Accent
     keyBtn.Font = Enum.Font.GothamBold
-    keyBtn.TextSize = 11
+    keyBtn.TextSize = 12
     keyBtn.Parent = frame
-    AddCorner(keyBtn, 6)
-    local stroke = AddStroke(keyBtn, NexusUI.CurrentTheme.Separator, 1)
+    AddCorner(keyBtn, 8)
+    local stroke = AddStroke(keyBtn, NexusUI.CurrentTheme.BorderColor, 1, 0.1)
 
     local setter = function(key)
         keyBtn.Text = key
-        keyBtn.TextColor3 = NexusUI.CurrentTheme.Accent
-        stroke.Color = NexusUI.CurrentTheme.Separator
         if callback then callback(key) end
-        if id then NexusUI.Config[id] = key; SaveUIConfig() end
+        if id then
+            NexusUI.Config[id] = key
+            SaveUIConfig()
+        end
     end
 
     local listening = false
@@ -1102,8 +1325,9 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
         PlayClickSound()
         listening = true
         keyBtn.Text = "..."
-        keyBtn.TextColor3 = Color3.fromRGB(255, 70, 70)
-        stroke.Color = Color3.fromRGB(255, 70, 70)
+        keyBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+        stroke.Color = Color3.fromRGB(255, 50, 50)
+        stroke.Transparency = 0
 
         if connection then connection:Disconnect() end
         connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -1120,7 +1344,8 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
                 listening = false
                 keyBtn.Text = defaultKey
                 keyBtn.TextColor3 = NexusUI.CurrentTheme.Accent
-                stroke.Color = NexusUI.CurrentTheme.Separator
+                stroke.Color = NexusUI.CurrentTheme.BorderColor
+                stroke.Transparency = 0.1
                 if connection then connection:Disconnect() end
             end
         end)
@@ -1128,24 +1353,30 @@ function NexusUI.CreateKeybind(parent, text, defaultKey, callback, id)
 
     if id then
         local saved = NexusUI.Config[id]
-        if saved ~= nil then setter(saved) else NexusUI.Config[id] = defaultKey end
+        if saved ~= nil then
+            setter(saved)
+        else
+            NexusUI.Config[id] = defaultKey
+        end
         RegisterElement(id, "keybind", setter, defaultKey)
     end
     return keyBtn, setter
 end
 
 -- ============================================================================
--- DROPDOWN COM SCROLL
+-- DROPDOWN PREMIUM (com animação e glassmorphism)
 -- ============================================================================
 function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -8, 0, 34)
+    frame.Size = UDim2.new(1, -10, 0, 36)
     frame.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+    frame.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     frame.Parent = parent
-    AddCorner(frame, 8)
+    AddCorner(frame, 10)
+    AddStroke(frame, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.48, 0, 1, 0)
+    label.Size = UDim2.new(0.4, 0, 1, 0)
     label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
@@ -1156,27 +1387,41 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
     label.Parent = frame
 
     local dropdownBtn = Instance.new("TextButton")
-    dropdownBtn.Size = UDim2.new(0.44, 0, 0.68, 0)
-    dropdownBtn.Position = UDim2.new(0.53, 0, 0.16, 0)
+    dropdownBtn.Size = UDim2.new(0.5, 0, 0.7, 0)
+    dropdownBtn.Position = UDim2.new(0.45, 0, 0.15, 0)
     dropdownBtn.BackgroundColor3 = NexusUI.CurrentTheme.InputBG
+    dropdownBtn.BackgroundTransparency = NexusUI.CurrentTheme.InputBGTransparency or 0.05
     dropdownBtn.Text = default or options[1] or ""
     dropdownBtn.TextColor3 = NexusUI.CurrentTheme.Accent
     dropdownBtn.Font = Enum.Font.GothamBold
-    dropdownBtn.TextSize = 11
+    dropdownBtn.TextSize = 12
     dropdownBtn.Parent = frame
-    AddCorner(dropdownBtn, 6)
-    local stroke = AddStroke(dropdownBtn, NexusUI.CurrentTheme.Separator, 1)
+    AddCorner(dropdownBtn, 8)
+    local stroke = AddStroke(dropdownBtn, NexusUI.CurrentTheme.BorderColor, 1, 0.1)
+
+    -- Seta do dropdown
+    local arrow = Instance.new("TextLabel")
+    arrow.Size = UDim2.new(0, 20, 1, 0)
+    arrow.Position = UDim2.new(1, -24, 0, 0)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = "▾"
+    arrow.TextColor3 = NexusUI.CurrentTheme.TextDim
+    arrow.Font = Enum.Font.GothamBold
+    arrow.TextSize = 14
+    arrow.TextXAlignment = Enum.TextXAlignment.Center
+    arrow.Parent = dropdownBtn
 
     local dropdownList = nil
     local isOpen = false
 
     local function closeDropdown()
         if dropdownList then
-            TweenService:Create(dropdownList, TweenInfo.new(0.15), {
-                Size = UDim2.new(0, 200, 0, 0),
-                BackgroundTransparency = 1
+            TweenService:Create(dropdownList, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+                BackgroundTransparency = 1,
+                Size = UDim2.new(0, 0, 0, 0)
             }):Play()
-            task.wait(0.15)
+            TweenService:Create(arrow, TweenInfo.new(0.2), {Text = "▾"}):Play()
+            task.wait(0.2)
             dropdownList:Destroy()
             dropdownList = nil
         end
@@ -1186,42 +1431,49 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
     local function openDropdown()
         if isOpen then return end
         isOpen = true
+        TweenService:Create(arrow, TweenInfo.new(0.2), {Text = "▴"}):Play()
 
         local dropdownContainer = Instance.new("Frame")
         dropdownContainer.Name = "DropdownContainer"
-        dropdownContainer.Size = UDim2.new(0, 200, 0, 0)
-        dropdownContainer.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+        dropdownContainer.Size = UDim2.new(0, 0, 0, 0)
+        dropdownContainer.BackgroundColor3 = NexusUI.CurrentTheme.Background
+        dropdownContainer.BackgroundTransparency = 0.15
         dropdownContainer.BorderSizePixel = 0
         dropdownContainer.ZIndex = 999
-        dropdownContainer.BackgroundTransparency = 0.05
         dropdownContainer.Parent = NexusUI.ScreenGui
-        AddCorner(dropdownContainer, 8)
-        AddStroke(dropdownContainer, NexusUI.CurrentTheme.Separator, 1)
-        AddShadow(dropdownContainer, 12, Color3.new(0,0,0), 0.6)
+        AddCorner(dropdownContainer, 12)
+        AddStroke(dropdownContainer, NexusUI.CurrentTheme.Accent, 1.5, 0.3)
+        AddShadow(dropdownContainer, 15, NexusUI.CurrentTheme.ShadowColor, NexusUI.CurrentTheme.ShadowTransparency)
 
-        local btnAbsPos = dropdownBtn.AbsolutePosition
-        dropdownContainer.Position = UDim2.new(0, btnAbsPos.X, 0, btnAbsPos.Y + dropdownBtn.AbsoluteSize.Y + 4)
+        -- Glass effect
+        local glass = Instance.new("Frame")
+        glass.Size = UDim2.new(1, 0, 1, 0)
+        glass.BackgroundColor3 = Color3.fromRGB(255,255,255)
+        glass.BackgroundTransparency = 0.02
+        glass.Parent = dropdownContainer
 
-        TweenService:Create(dropdownContainer, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 200, 0, math.min(#options * 28 + 8, 150))
+        -- Tamanho baseado no número de opções
+        local maxHeight = math.min(#options * 32, 160)
+        dropdownContainer.Size = UDim2.new(0, 240, 0, maxHeight)
+        TweenService:Create(dropdownContainer, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 240, 0, maxHeight)
         }):Play()
 
+        local btnAbsPos = dropdownBtn.AbsolutePosition
+        local parentAbsPos = frame.AbsolutePosition
+        local xOffset = btnAbsPos.X - parentAbsPos.X
+        dropdownContainer.Position = UDim2.new(0, xOffset, 0, 38)
+
         local scroll = Instance.new("ScrollingFrame")
-        scroll.Size = UDim2.new(1, 0, 1, 0)
+        scroll.Size = UDim2.new(1, -4, 1, -4)
+        scroll.Position = UDim2.new(0, 2, 0, 2)
         scroll.BackgroundTransparency = 1
         scroll.ScrollBarThickness = 3
         scroll.ScrollBarImageColor3 = NexusUI.CurrentTheme.Accent
-        scroll.CanvasSize = UDim2.new(0, 0, 0, 28 * #options + 8)
-        scroll.AutomaticCanvasSize = Enum.AutomaticSize.None
-        scroll.ZIndex = 999
+        scroll.ScrollBarImageTransparency = 0.3
+        scroll.CanvasSize = UDim2.new(0, 0, 0, #options * 32)
+        scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
         scroll.Parent = dropdownContainer
-
-        local padding = Instance.new("UIPadding")
-        padding.PaddingTop = UDim.new(0, 4)
-        padding.PaddingBottom = UDim.new(0, 4)
-        padding.PaddingLeft = UDim.new(0, 4)
-        padding.PaddingRight = UDim.new(0, 4)
-        padding.Parent = scroll
 
         local layout = Instance.new("UIListLayout")
         layout.Padding = UDim.new(0, 2)
@@ -1230,59 +1482,73 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
 
         for _, opt in ipairs(options) do
             local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 26)
-            optBtn.BackgroundColor3 = opt == dropdownBtn.Text and NexusUI.CurrentTheme.AccentDark or NexusUI.CurrentTheme.InputBG
+            optBtn.Size = UDim2.new(1, 0, 0, 30)
+            optBtn.BackgroundColor3 = NexusUI.CurrentTheme.InputBG
+            optBtn.BackgroundTransparency = NexusUI.CurrentTheme.InputBGTransparency or 0.05
             optBtn.Text = opt
-            optBtn.TextColor3 = opt == dropdownBtn.Text and NexusUI.CurrentTheme.Text or NexusUI.CurrentTheme.TextDim
+            optBtn.TextColor3 = NexusUI.CurrentTheme.Text
             optBtn.Font = Enum.Font.GothamSemibold
-            optBtn.TextSize = 11
-            optBtn.ZIndex = 999
+            optBtn.TextSize = 12
             optBtn.Parent = scroll
-            AddCorner(optBtn, 5)
+            AddCorner(optBtn, 6)
+            AddStroke(optBtn, NexusUI.CurrentTheme.BorderColor, 1, 0.05)
 
             optBtn.MouseEnter:Connect(function()
-                if opt ~= dropdownBtn.Text then
-                    TweenService:Create(optBtn, TweenInfo.new(0.15), {
-                        BackgroundColor3 = NexusUI.CurrentTheme.ItemHover,
-                        TextColor3 = NexusUI.CurrentTheme.Text
-                    }):Play()
-                end
+                TweenService:Create(optBtn, TweenInfo.new(0.15), {
+                    BackgroundTransparency = 0.02,
+                    BackgroundColor3 = NexusUI.CurrentTheme.Accent
+                }):Play()
+                TweenService:Create(optBtn, TweenInfo.new(0.15), {
+                    TextColor3 = Color3.fromRGB(255, 255, 255)
+                }):Play()
             end)
             optBtn.MouseLeave:Connect(function()
-                if opt ~= dropdownBtn.Text then
-                    TweenService:Create(optBtn, TweenInfo.new(0.15), {
-                        BackgroundColor3 = NexusUI.CurrentTheme.InputBG,
-                        TextColor3 = NexusUI.CurrentTheme.TextDim
-                    }):Play()
-                end
+                TweenService:Create(optBtn, TweenInfo.new(0.15), {
+                    BackgroundTransparency = NexusUI.CurrentTheme.InputBGTransparency or 0.05,
+                    BackgroundColor3 = NexusUI.CurrentTheme.InputBG
+                }):Play()
+                TweenService:Create(optBtn, TweenInfo.new(0.15), {
+                    TextColor3 = NexusUI.CurrentTheme.Text
+                }):Play()
             end)
 
             optBtn.MouseButton1Click:Connect(function()
                 PlayClickSound()
                 dropdownBtn.Text = opt
                 if callback then callback(opt) end
-                if id then NexusUI.Config[id] = opt; SaveUIConfig() end
+                if id then
+                    NexusUI.Config[id] = opt
+                    SaveUIConfig()
+                end
                 closeDropdown()
             end)
         end
 
-        local connection
-        connection = UserInputService.InputBegan:Connect(function(input)
+        local function onGlobalClick(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local mousePos = input.Position
-                local btnAbsPos2 = dropdownBtn.AbsolutePosition
+                local btnAbsPos = dropdownBtn.AbsolutePosition
                 local btnSize = dropdownBtn.AbsoluteSize
                 local contAbsPos = dropdownContainer.AbsolutePosition
                 local contSize = dropdownContainer.AbsoluteSize
 
-                local insideBtn = mousePos.X >= btnAbsPos2.X and mousePos.X <= btnAbsPos2.X + btnSize.X and
-                                   mousePos.Y >= btnAbsPos2.Y and mousePos.Y <= btnAbsPos2.Y + btnSize.Y
-                local insideContainer = mousePos.X >= contAbsPos.X and mousePos.X <= contAbsPos.X + contSize.X and
-                                         mousePos.Y >= contAbsPos.Y and mousePos.Y <= contAbsPos.Y + contSize.Y
+                local insideBtn = (mousePos.X >= btnAbsPos.X and mousePos.X <= btnAbsPos.X + btnSize.X and
+                                   mousePos.Y >= btnAbsPos.Y and mousePos.Y <= btnAbsPos.Y + btnSize.Y)
+                local insideContainer = (mousePos.X >= contAbsPos.X and mousePos.X <= contAbsPos.X + contSize.X and
+                                         mousePos.Y >= contAbsPos.Y and mousePos.Y <= contAbsPos.Y + contSize.Y)
 
-                if not insideBtn and not insideContainer then closeDropdown() end
+                if not insideBtn and not insideContainer then
+                    closeDropdown()
+                end
             end
-            if not isOpen and connection then connection:Disconnect() end
+        end
+
+        local connection
+        connection = UserInputService.InputBegan:Connect(function(input)
+            onGlobalClick(input)
+            if not isOpen then
+                if connection then connection:Disconnect() end
+            end
         end)
 
         dropdownContainer.Destroying:Connect(function()
@@ -1294,14 +1560,21 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
 
     dropdownBtn.MouseButton1Click:Connect(function()
         PlayClickSound()
-        if isOpen then closeDropdown() else openDropdown() end
+        if isOpen then
+            closeDropdown()
+        else
+            openDropdown()
+        end
     end)
 
     local setter = function(value)
         if table.find(options, value) then
             dropdownBtn.Text = value
             if callback then callback(value) end
-            if id then NexusUI.Config[id] = value; SaveUIConfig() end
+            if id then
+                NexusUI.Config[id] = value
+                SaveUIConfig()
+            end
         end
     end
 
@@ -1319,59 +1592,130 @@ function NexusUI.CreateDropdown(parent, text, options, default, callback, id)
 end
 
 -- ============================================================================
--- TEMAS
+-- TEMAS (com seletor premium)
 -- ============================================================================
 function NexusUI.CreateThemeSelector(parent, onThemeChanged)
     local themeNames = {"Original", "Red", "Blue", "Verde", "Purple", "Yellow", "Branco", "Preto"}
+    local row1 = Instance.new("Frame")
+    row1.Size = UDim2.new(1, -10, 0, 34)
+    row1.BackgroundTransparency = 1
+    row1.Parent = parent
+    for i = 1, 3 do
+        local themeName = themeNames[i]
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.32, -5, 1, 0)
+        btn.Position = UDim2.new((i-1) * 0.33, 0, 0, 0)
+        btn.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+        btn.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
+        btn.Text = themeName
+        btn.TextColor3 = LibraryConfig.DefaultTheme == themeName and NexusUI.CurrentTheme.Accent or NexusUI.CurrentTheme.TextDim
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 12
+        btn.Parent = row1
+        AddCorner(btn, 8)
+        AddStroke(btn, NexusUI.CurrentTheme.BorderColor, 1, 0.08)
 
-    local function makeRow(startIdx, endIdx, yOffset)
-        local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, -8, 0, 30)
-        row.Position = UDim2.new(0, 0, 0, yOffset)
-        row.BackgroundTransparency = 1
-        row.Parent = parent
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                TextColor3 = NexusUI.CurrentTheme.Text,
+                BackgroundTransparency = 0.02
+            }):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                TextColor3 = LibraryConfig.DefaultTheme == themeName and NexusUI.CurrentTheme.Accent or NexusUI.CurrentTheme.TextDim,
+                BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
+            }):Play()
+        end)
 
-        local count = endIdx - startIdx + 1
-        for i = startIdx, endIdx do
-            local themeName = themeNames[i]
-            local slot = i - startIdx
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1/count, -4, 1, 0)
-            btn.Position = UDim2.new(slot/count, 2, 0, 0)
-            btn.BackgroundColor3 = LibraryConfig.DefaultTheme == themeName
-                and NexusUI.CurrentTheme.AccentDark
-                or NexusUI.CurrentTheme.ItemBG
-            btn.Text = themeName
-            btn.TextColor3 = LibraryConfig.DefaultTheme == themeName
-                and NexusUI.CurrentTheme.Text
-                or NexusUI.CurrentTheme.TextDim
-            btn.Font = Enum.Font.GothamBold
-            btn.TextSize = 10
-            btn.Parent = row
-            AddCorner(btn, 6)
-
-            btn.MouseEnter:Connect(function()
-                TweenService:Create(btn, TweenInfo.new(0.15), {TextColor3 = NexusUI.CurrentTheme.Text}):Play()
-            end)
-            btn.MouseLeave:Connect(function()
-                TweenService:Create(btn, TweenInfo.new(0.15), {
-                    TextColor3 = LibraryConfig.DefaultTheme == themeName and NexusUI.CurrentTheme.Text or NexusUI.CurrentTheme.TextDim
-                }):Play()
-            end)
-            btn.MouseButton1Click:Connect(function()
-                PlayClickSound()
-                NexusUI.SetTheme(themeName)
-                if onThemeChanged then onThemeChanged(themeName) end
-            end)
-        end
+        btn.MouseButton1Click:Connect(function()
+            PlayClickSound()
+            NexusUI.SetTheme(themeName)
+            if onThemeChanged then onThemeChanged(themeName) end
+        end)
     end
+    local row2 = Instance.new("Frame")
+    row2.Size = UDim2.new(1, -10, 0, 34)
+    row2.Position = UDim2.new(0, 0, 0, 38)
+    row2.BackgroundTransparency = 1
+    row2.Parent = parent
+    for i = 4, 6 do
+        local themeName = themeNames[i]
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.32, -5, 1, 0)
+        btn.Position = UDim2.new((i-4) * 0.33, 0, 0, 0)
+        btn.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+        btn.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
+        btn.Text = themeName
+        btn.TextColor3 = LibraryConfig.DefaultTheme == themeName and NexusUI.CurrentTheme.Accent or NexusUI.CurrentTheme.TextDim
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 12
+        btn.Parent = row2
+        AddCorner(btn, 8)
+        AddStroke(btn, NexusUI.CurrentTheme.BorderColor, 1, 0.08)
 
-    makeRow(1, 4, 0)
-    makeRow(5, 8, 36)
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                TextColor3 = NexusUI.CurrentTheme.Text,
+                BackgroundTransparency = 0.02
+            }):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                TextColor3 = LibraryConfig.DefaultTheme == themeName and NexusUI.CurrentTheme.Accent or NexusUI.CurrentTheme.TextDim,
+                BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
+            }):Play()
+        end)
+
+        btn.MouseButton1Click:Connect(function()
+            PlayClickSound()
+            NexusUI.SetTheme(themeName)
+            if onThemeChanged then onThemeChanged(themeName) end
+        end)
+    end
+    local row3 = Instance.new("Frame")
+    row3.Size = UDim2.new(1, -10, 0, 34)
+    row3.Position = UDim2.new(0, 0, 0, 76)
+    row3.BackgroundTransparency = 1
+    row3.Parent = parent
+    for i = 7, 8 do
+        local themeName = themeNames[i]
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.32, -5, 1, 0)
+        btn.Position = UDim2.new((i-7) * 0.33, 0, 0, 0)
+        btn.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+        btn.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
+        btn.Text = themeName
+        btn.TextColor3 = LibraryConfig.DefaultTheme == themeName and NexusUI.CurrentTheme.Accent or NexusUI.CurrentTheme.TextDim
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 12
+        btn.Parent = row3
+        AddCorner(btn, 8)
+        AddStroke(btn, NexusUI.CurrentTheme.BorderColor, 1, 0.08)
+
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                TextColor3 = NexusUI.CurrentTheme.Text,
+                BackgroundTransparency = 0.02
+            }):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                TextColor3 = LibraryConfig.DefaultTheme == themeName and NexusUI.CurrentTheme.Accent or NexusUI.CurrentTheme.TextDim,
+                BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
+            }):Play()
+        end)
+
+        btn.MouseButton1Click:Connect(function()
+            PlayClickSound()
+            NexusUI.SetTheme(themeName)
+            if onThemeChanged then onThemeChanged(themeName) end
+        end)
+    end
 end
 
 -- ============================================================================
--- CRÉDITOS
+-- CRÉDITOS (com design premium)
 -- ============================================================================
 function NexusUI.AddCredit(name, role, imageId, youtubeChannelName, youtubeUrl)
     if not NexusUI.CreditsContainer then
@@ -1379,63 +1723,74 @@ function NexusUI.AddCredit(name, role, imageId, youtubeChannelName, youtubeUrl)
         return
     end
     local card = Instance.new("Frame")
-    card.Size = UDim2.new(1, -8, 0, 88)
+    card.Size = UDim2.new(1, -10, 0, 95)
     card.BackgroundColor3 = NexusUI.CurrentTheme.ItemBG
+    card.BackgroundTransparency = NexusUI.CurrentTheme.ItemBGTransparency or 0.06
     card.Parent = NexusUI.CreditsContainer
     AddCorner(card, 10)
-    AddShadow(card, 8, Color3.new(0,0,0), 0.4)
+    AddStroke(card, NexusUI.CurrentTheme.BorderColor, 1, NexusUI.CurrentTheme.BorderTransparency or 0.08)
+    AddShadow(card, 10, NexusUI.CurrentTheme.ShadowColor, 0.2)
 
     if imageId and imageId ~= "" then
         local img = Instance.new("ImageLabel")
-        img.Size = UDim2.new(0, 56, 0, 56)
-        img.Position = UDim2.new(0, 12, 0.5, -28)
-        img.BackgroundColor3 = NexusUI.CurrentTheme.InputBG
-        img.BackgroundTransparency = 0
+        img.Size = UDim2.new(0, 60, 0, 60)
+        img.Position = UDim2.new(0, 12, 0.5, -30)
+        img.BackgroundTransparency = 1
         img.Image = imageId
         img.Parent = card
         AddCorner(img, 10)
+        AddStroke(img, NexusUI.CurrentTheme.BorderColor, 1, 0.08)
     end
 
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(0.6, 0, 0, 22)
-    nameLabel.Position = UDim2.new(0, 80, 0, 12)
+    nameLabel.Size = UDim2.new(0.6, 0, 0, 26)
+    nameLabel.Position = UDim2.new(0, 84, 0, 10)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = name
     nameLabel.TextColor3 = NexusUI.CurrentTheme.Accent
     nameLabel.Font = Enum.Font.GothamBlack
-    nameLabel.TextSize = 13
+    nameLabel.TextSize = 14
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.Parent = card
 
     local roleLabel = Instance.new("TextLabel")
-    roleLabel.Size = UDim2.new(0.6, 0, 0, 16)
-    roleLabel.Position = UDim2.new(0, 80, 0, 35)
+    roleLabel.Size = UDim2.new(0.6, 0, 0, 20)
+    roleLabel.Position = UDim2.new(0, 84, 0, 38)
     roleLabel.BackgroundTransparency = 1
     roleLabel.Text = role
     roleLabel.TextColor3 = NexusUI.CurrentTheme.TextDim
-    roleLabel.Font = Enum.Font.Gotham
-    roleLabel.TextSize = 10
+    roleLabel.Font = Enum.Font.GothamSemibold
+    roleLabel.TextSize = 11
     roleLabel.TextXAlignment = Enum.TextXAlignment.Left
     roleLabel.Parent = card
 
     if youtubeChannelName and youtubeUrl then
         local ytBtn = Instance.new("TextButton")
-        ytBtn.Size = UDim2.new(0, 110, 0, 22)
-        ytBtn.Position = UDim2.new(0, 80, 0, 56)
-        ytBtn.BackgroundColor3 = NexusUI.CurrentTheme.AccentDark
-        ytBtn.Text = "▶ " .. youtubeChannelName
+        ytBtn.Size = UDim2.new(0.3, -10, 0, 28)
+        ytBtn.Position = UDim2.new(0, 84, 0, 60)
+        ytBtn.BackgroundColor3 = NexusUI.CurrentTheme.Accent
+        ytBtn.BackgroundTransparency = 0.1
+        ytBtn.Text = "🎬 " .. youtubeChannelName
         ytBtn.TextColor3 = NexusUI.CurrentTheme.Text
         ytBtn.Font = Enum.Font.GothamBold
-        ytBtn.TextSize = 10
+        ytBtn.TextSize = 11
         ytBtn.Parent = card
-        AddCorner(ytBtn, 5)
+        AddCorner(ytBtn, 8)
+        AddStroke(ytBtn, NexusUI.CurrentTheme.Accent, 1, 0.2)
 
         ytBtn.MouseEnter:Connect(function()
-            TweenService:Create(ytBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(220, 40, 40)}):Play()
+            TweenService:Create(ytBtn, TweenInfo.new(0.2), {
+                BackgroundTransparency = 0.3,
+                BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+            }):Play()
         end)
         ytBtn.MouseLeave:Connect(function()
-            TweenService:Create(ytBtn, TweenInfo.new(0.15), {BackgroundColor3 = NexusUI.CurrentTheme.AccentDark}):Play()
+            TweenService:Create(ytBtn, TweenInfo.new(0.2), {
+                BackgroundTransparency = 0.1,
+                BackgroundColor3 = NexusUI.CurrentTheme.Accent
+            }):Play()
         end)
+
         ytBtn.MouseButton1Click:Connect(function()
             PlayClickSound()
             setclipboard(youtubeUrl)
@@ -1447,7 +1802,9 @@ end
 function NexusUI.ClearCredits()
     if NexusUI.CreditsContainer then
         for _, child in ipairs(NexusUI.CreditsContainer:GetChildren()) do
-            if child:IsA("Frame") then child:Destroy() end
+            if child:IsA("Frame") then
+                child:Destroy()
+            end
         end
     end
 end
@@ -1456,8 +1813,12 @@ end
 -- DESTRUIÇÃO
 -- ============================================================================
 function NexusUI.Destroy()
-    if NexusUI.ScreenGui then NexusUI.ScreenGui:Destroy() end
-    if NexusUI.NotifyContainer then NexusUI.NotifyContainer:Destroy() end
+    if NexusUI.ScreenGui then
+        NexusUI.ScreenGui:Destroy()
+    end
+    if NexusUI.NotifyContainer then
+        NexusUI.NotifyContainer:Destroy()
+    end
     NexusUI.Tabs = {}
     NexusUI.SavedPositions = {}
 end
