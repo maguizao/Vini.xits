@@ -1,5 +1,6 @@
--- NexusUILib.lua (Abas Horizontais + Loading Integrado)
--- Com animações, scroll horizontal, dropdown com scroll e tela de loading nativa
+-- NexusUILib.lua (Remake - Abas Horizontais)
+-- Com animações, scroll horizontal nas abas, dropdown com scroll,
+-- Save Positions integrado e API compatível com versões anteriores
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -20,18 +21,9 @@ local LibraryConfig = {
     IncludeDefaultSettingsTab = true,
     IncludeDefaultCreditsTab = true,
     AnimationSpeed = 0.3,
-    -- Loading
-    LoadingEnabled = false,
-    LoadingDuration = 5.0,
-    HoldAfter100 = 1.5,
-    N_MoveSpeed = 1.0,
-    LinesExpandSpeed = 0.8,
-    HoldFinalName = 3.5,
-    FadeOutSpeed = 0.8,
-    SoundId = "rbxassetid://12222200",
 }
 
--- Temas (iguais aos anteriores)
+-- Temas (8 opções)
 local Themes = {
     Original = {
         Background = Color3.fromRGB(15, 15, 20),
@@ -130,6 +122,7 @@ local NexusUI = {
     TabContainer = nil,
     TabScroll = nil,
     ContentContainer = nil,
+    ContentSlide = nil,
     TitleLabel = nil,
     ToggleButton = nil,
     Tabs = {},
@@ -141,8 +134,7 @@ local NexusUI = {
     Config = {},
     RegisteredElements = {},
     Animating = false,
-    LoadingFrame = nil,
-    LoadingActive = false,
+    TabButtons = {},
 }
 
 -- ============================================================================
@@ -190,10 +182,16 @@ local function PlayClickSound()
     end)
 end
 
-local function MakeDraggable(frame, trigger)
-    trigger = trigger or frame
+-- ============================================================================
+-- SISTEMA DE SAVE POSITIONS (ARRANJOS ARRASTÁVEIS)
+-- ============================================================================
+
+-- Função para criar um elemento arrastável com salvamento automático de posição
+function NexusUI.MakeDraggableWithSave(frame, saveName, saveCallback)
+    saveName = saveName or frame.Name or "Unknown"
     local dragging, dragInput, dragStart, startPos
-    trigger.InputBegan:Connect(function(input)
+
+    frame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
@@ -205,22 +203,36 @@ local function MakeDraggable(frame, trigger)
             end)
         end
     end)
-    trigger.InputChanged:Connect(function(input)
+
+    frame.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
     end)
+
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input == dragInput then
             local delta = input.Position - dragStart
             frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            NexusUI.SavedPositions[frame.Name] = {
+            -- Salva a posição
+            NexusUI.SavedPositions[saveName] = {
                 frame.Position.X.Scale, frame.Position.X.Offset,
                 frame.Position.Y.Scale, frame.Position.Y.Offset
             }
             SaveUIConfig()
+            if saveCallback then saveCallback(frame) end
         end
     end)
+
+    -- Carrega posição salva (se existir)
+    if NexusUI.SavedPositions and NexusUI.SavedPositions[saveName] then
+        local p = NexusUI.SavedPositions[saveName]
+        if #p >= 4 then
+            frame.Position = UDim2.new(p[1], p[2], p[3], p[4])
+        end
+    end
+
+    return frame
 end
 
 -- ============================================================================
@@ -313,286 +325,6 @@ function NexusUI.Notify(title, text, duration)
             Frame:Destroy()
         end
     end)
-end
-
--- ============================================================================
--- TELA DE LOADING INTEGRADA (DENTRO DA GUI)
--- ============================================================================
-local function CreateLoadingOverlay(parent)
-    if NexusUI.LoadingFrame then return end
-
-    local loadingFrame = Instance.new("Frame")
-    loadingFrame.Name = "LoadingOverlay"
-    loadingFrame.Size = UDim2.new(1, 0, 1, 0)
-    loadingFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
-    loadingFrame.BorderSizePixel = 0
-    loadingFrame.ZIndex = 999999
-    loadingFrame.Parent = parent
-
-    -- Fundo com glow e grid
-    local glow = Instance.new("ImageLabel")
-    glow.Size = UDim2.new(0, 800, 0, 800)
-    glow.Position = UDim2.new(0.5, 0, 0.5, 0)
-    glow.AnchorPoint = Vector2.new(0.5, 0.5)
-    glow.BackgroundTransparency = 1
-    glow.Image = "rbxassetid://6015801993"
-    glow.ImageColor3 = Color3.fromRGB(45, 55, 75)
-    glow.ImageTransparency = 0.65
-    glow.ZIndex = 999999
-    glow.Parent = loadingFrame
-
-    local grid = Instance.new("ImageLabel")
-    grid.Size = UDim2.new(1, 0, 1, 0)
-    grid.BackgroundTransparency = 1
-    grid.Image = "rbxassetid://996834483"
-    grid.ScaleType = Enum.ScaleType.Tile
-    grid.TileSize = UDim2.new(0, 40, 0, 40)
-    grid.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    grid.ImageTransparency = 0.95
-    grid.ZIndex = 999999
-    grid.Parent = loadingFrame
-
-    -- N estilizado
-    local nLabel = Instance.new("TextLabel")
-    nLabel.Name = "N_Logo"
-    nLabel.Size = UDim2.new(0, 120, 0, 120)
-    nLabel.Position = UDim2.new(0.5, 0, 0.45, 0)
-    nLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-    nLabel.BackgroundTransparency = 1
-    nLabel.Text = "N"
-    nLabel.Font = Enum.Font.GothamBlack
-    nLabel.TextSize = 0
-    nLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nLabel.TextTransparency = 1
-    nLabel.ZIndex = 1000000
-    nLabel.Parent = loadingFrame
-
-    local nGradient = Instance.new("UIGradient")
-    nGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 245, 255)),
-        ColorSequenceKeypoint.new(0.25, Color3.fromRGB(150, 155, 165)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(0.75, Color3.fromRGB(140, 145, 155)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(230, 235, 245))
-    })
-    nGradient.Rotation = 45
-    nGradient.Parent = nLabel
-
-    local nStroke = Instance.new("UIStroke")
-    nStroke.Thickness = 1.5
-    nStroke.Color = Color3.fromRGB(200, 210, 225)
-    nStroke.Transparency = 1
-    nStroke.Parent = nLabel
-
-    -- Barra de progresso
-    local loadingContainer = Instance.new("Frame")
-    loadingContainer.Size = UDim2.new(0, 300, 0, 5)
-    loadingContainer.Position = UDim2.new(0.5, 0, 0.75, 0)
-    loadingContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-    loadingContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    loadingContainer.BorderSizePixel = 0
-    loadingContainer.BackgroundTransparency = 1
-    loadingContainer.ZIndex = 1000000
-    loadingContainer.Parent = loadingFrame
-    AddCorner(loadingContainer, 1)
-
-    local progressBar = Instance.new("Frame")
-    progressBar.Size = UDim2.new(0, 0, 1, 0)
-    progressBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    progressBar.BorderSizePixel = 0
-    progressBar.ZIndex = 1000001
-    progressBar.Parent = loadingContainer
-
-    local barGradient = Instance.new("UIGradient")
-    barGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 185, 195)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
-    })
-    barGradient.Parent = progressBar
-    AddCorner(progressBar, 1)
-
-    local progressGlow = Instance.new("Frame")
-    progressGlow.Size = UDim2.new(0, 10, 0, 10)
-    progressGlow.Position = UDim2.new(1, 0, 0.5, 0)
-    progressGlow.AnchorPoint = Vector2.new(0.5, 0.5)
-    progressGlow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    progressGlow.BorderSizePixel = 0
-    progressGlow.BackgroundTransparency = 1
-    progressGlow.ZIndex = 1000002
-    progressGlow.Parent = progressBar
-    AddCorner(progressGlow, 1)
-
-    local progressPercent = Instance.new("TextLabel")
-    progressPercent.Size = UDim2.new(0, 100, 0, 20)
-    progressPercent.Position = UDim2.new(0.5, 0, 1, 8)
-    progressPercent.AnchorPoint = Vector2.new(0.5, 0)
-    progressPercent.BackgroundTransparency = 1
-    progressPercent.Text = "0%"
-    progressPercent.Font = Enum.Font.GothamMedium
-    progressPercent.TextSize = 13
-    progressPercent.TextColor3 = Color3.fromRGB(220, 225, 235)
-    progressPercent.TextTransparency = 1
-    progressPercent.ZIndex = 1000000
-    progressPercent.Parent = loadingContainer
-
-    -- Linhas e nome
-    local detailsContainer = Instance.new("Frame")
-    detailsContainer.Size = UDim2.new(0, 320, 0, 60)
-    detailsContainer.Position = UDim2.new(0.38, 30, 0.5, 0)
-    detailsContainer.AnchorPoint = Vector2.new(0, 0.5)
-    detailsContainer.BackgroundTransparency = 1
-    detailsContainer.ZIndex = 1000000
-    detailsContainer.Parent = loadingFrame
-
-    local lineTop = Instance.new("Frame")
-    lineTop.Size = UDim2.new(0, 0, 0, 2)
-    lineTop.Position = UDim2.new(0, 0, 0.2, 0)
-    lineTop.BackgroundColor3 = Color3.fromRGB(220, 225, 235)
-    lineTop.BorderSizePixel = 0
-    lineTop.ZIndex = 1000000
-    lineTop.Parent = detailsContainer
-
-    local lineBottom = Instance.new("Frame")
-    lineBottom.Size = UDim2.new(0, 0, 0, 2)
-    lineBottom.Position = UDim2.new(0, 0, 0.8, 0)
-    lineBottom.BackgroundColor3 = Color3.fromRGB(220, 225, 235)
-    lineBottom.BorderSizePixel = 0
-    lineBottom.ZIndex = 1000000
-    lineBottom.Parent = detailsContainer
-
-    local scriptNameLabel = Instance.new("TextLabel")
-    scriptNameLabel.Size = UDim2.new(1, 0, 0.4, 0)
-    scriptNameLabel.Position = UDim2.new(0, 0, 0.3, 0)
-    scriptNameLabel.BackgroundTransparency = 1
-    scriptNameLabel.Text = LibraryConfig.WindowTitle
-    scriptNameLabel.Font = Enum.Font.GothamBold
-    scriptNameLabel.TextSize = 24
-    scriptNameLabel.TextColor3 = Color3.fromRGB(240, 245, 255)
-    scriptNameLabel.TextTransparency = 1
-    scriptNameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    scriptNameLabel.ZIndex = 1000000
-    scriptNameLabel.Parent = detailsContainer
-
-    -- Som
-    local revealSound = Instance.new("Sound")
-    revealSound.Name = "RevealSound"
-    revealSound.SoundId = LibraryConfig.SoundId
-    revealSound.Volume = 0.8
-    revealSound.Parent = loadingFrame
-
-    -- Armazena referências
-    NexusUI.LoadingFrame = loadingFrame
-    NexusUI.LoadingData = {
-        nLabel = nLabel,
-        nStroke = nStroke,
-        loadingContainer = loadingContainer,
-        progressBar = progressBar,
-        progressPercent = progressPercent,
-        progressGlow = progressGlow,
-        lineTop = lineTop,
-        lineBottom = lineBottom,
-        scriptNameLabel = scriptNameLabel,
-        glow = glow,
-        grid = grid,
-        revealSound = revealSound,
-        detailsContainer = detailsContainer,
-    }
-end
-
-local function RunLoadingSequence(callback)
-    if not NexusUI.LoadingFrame or not NexusUI.LoadingData then
-        if callback then callback() end
-        return
-    end
-
-    local data = NexusUI.LoadingData
-    local frame = NexusUI.LoadingFrame
-
-    -- 1. Aparecimento do "N"
-    local nAppear = TweenService:Create(data.nLabel, TweenInfo.new(0.9, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        TextTransparency = 0,
-        TextSize = 100
-    })
-    local strokeAppear = TweenService:Create(data.nStroke, TweenInfo.new(0.9), {
-        Transparency = 0.3
-    })
-    nAppear:Play()
-    strokeAppear:Play()
-    nAppear.Completed:Wait()
-
-    -- 2. Barra de progresso
-    TweenService:Create(data.loadingContainer, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
-    TweenService:Create(data.progressPercent, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
-    TweenService:Create(data.progressGlow, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
-    task.wait(0.2)
-
-    -- 3. Progresso
-    local progressTween = TweenService:Create(data.progressBar, TweenInfo.new(LibraryConfig.LoadingDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = UDim2.new(1, 0, 1, 0)
-    })
-    progressTween:Play()
-
-    local startTime = tick()
-    while tick() - startTime < LibraryConfig.LoadingDuration do
-        local p = math.floor(((tick() - startTime) / LibraryConfig.LoadingDuration) * 100)
-        data.progressPercent.Text = math.clamp(p, 0, 100) .. "%"
-        task.wait(0.03)
-    end
-    data.progressPercent.Text = "100%"
-    task.wait(LibraryConfig.HoldAfter100)
-
-    -- 4. Esconde barra
-    TweenService:Create(data.loadingContainer, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(data.progressBar, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(data.progressPercent, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-    TweenService:Create(data.progressGlow, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-    task.wait(0.3)
-
-    -- 5. Move o "N"
-    local nMove = TweenService:Create(data.nLabel, TweenInfo.new(LibraryConfig.N_MoveSpeed, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
-        Position = UDim2.new(0.32, 0, 0.5, 0)
-    })
-    nMove:Play()
-    nMove.Completed:Wait()
-
-    pcall(function() data.revealSound:Play() end)
-
-    -- 6. Linhas e nome
-    TweenService:Create(data.lineTop, TweenInfo.new(LibraryConfig.LinesExpandSpeed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 240, 0, 2)
-    }):Play()
-    task.wait(0.12)
-    TweenService:Create(data.lineBottom, TweenInfo.new(LibraryConfig.LinesExpandSpeed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 240, 0, 2)
-    }):Play()
-
-    local nameFade = TweenService:Create(data.scriptNameLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        TextTransparency = 0
-    })
-    nameFade:Play()
-    nameFade.Completed:Wait()
-    task.wait(LibraryConfig.HoldFinalName)
-
-    -- 7. Fade out
-    local fadeOut = TweenService:Create(frame, TweenInfo.new(LibraryConfig.FadeOutSpeed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-        BackgroundTransparency = 1
-    })
-    TweenService:Create(data.glow, TweenInfo.new(LibraryConfig.FadeOutSpeed * 0.5), {ImageTransparency = 1}):Play()
-    TweenService:Create(data.grid, TweenInfo.new(LibraryConfig.FadeOutSpeed * 0.5), {ImageTransparency = 1}):Play()
-    TweenService:Create(data.nLabel, TweenInfo.new(LibraryConfig.FadeOutSpeed * 0.5), {TextTransparency = 1}):Play()
-    TweenService:Create(data.nStroke, TweenInfo.new(LibraryConfig.FadeOutSpeed * 0.5), {Transparency = 1}):Play()
-    TweenService:Create(data.lineTop, TweenInfo.new(LibraryConfig.FadeOutSpeed * 0.5), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(data.lineBottom, TweenInfo.new(LibraryConfig.FadeOutSpeed * 0.5), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(data.scriptNameLabel, TweenInfo.new(LibraryConfig.FadeOutSpeed * 0.5), {TextTransparency = 1}):Play()
-    fadeOut:Play()
-    fadeOut.Completed:Wait()
-
-    frame:Destroy()
-    NexusUI.LoadingFrame = nil
-    NexusUI.LoadingData = nil
-    NexusUI.LoadingActive = false
-
-    if callback then callback() end
 end
 
 -- ============================================================================
@@ -714,10 +446,6 @@ function NexusUI.SetWindowTitle(title)
     if NexusUI.TitleLabel then
         NexusUI.TitleLabel.Text = title
     end
-    -- Atualiza também o nome na tela de loading
-    if NexusUI.LoadingData and NexusUI.LoadingData.scriptNameLabel then
-        NexusUI.LoadingData.scriptNameLabel.Text = title
-    end
 end
 
 local function RegisterElement(id, type, setter, default)
@@ -783,18 +511,16 @@ local function ReorderTabs()
 end
 
 -- ============================================================================
--- CRIAÇÃO DA JANELA (com loading integrado)
+-- CRIAÇÃO DA JANELA (com abas horizontais)
 -- ============================================================================
-function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, configFileName, includeDefaultCredits, enableLoading)
+function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, configFileName, includeDefaultCredits)
     if includeDefaultSettings == nil then includeDefaultSettings = LibraryConfig.IncludeDefaultSettingsTab end
     if includeDefaultCredits == nil then includeDefaultCredits = LibraryConfig.IncludeDefaultCreditsTab end
     if configFileName then LibraryConfig.SaveFileName = configFileName end
-    if enableLoading == nil then enableLoading = LibraryConfig.LoadingEnabled end
 
     if NexusUI.ScreenGui then NexusUI.ScreenGui:Destroy() end
 
     title = title or LibraryConfig.WindowTitle
-    LibraryConfig.WindowTitle = title
     LoadUIConfig()
 
     NexusUI.ScreenGui = Instance.new("ScreenGui")
@@ -803,7 +529,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     NexusUI.ScreenGui.ResetOnSpawn = false
     NexusUI.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Botão toggle
+    -- Botão toggle (com animação)
     local toggleBtn = Instance.new("ImageButton")
     toggleBtn.Name = "ToggleButton"
     toggleBtn.Parent = NexusUI.ScreenGui
@@ -816,7 +542,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     toggleBtn.ZIndex = 100
     AddCorner(toggleBtn, 10)
     AddShadow(toggleBtn, 12, Color3.new(0,0,0), 0.5)
-    MakeDraggable(toggleBtn, toggleBtn)
+    NexusUI.MakeDraggableWithSave(toggleBtn, "ToggleButton") -- Salva posição do toggle
 
     toggleBtn.MouseEnter:Connect(function()
         TweenService:Create(toggleBtn, TweenInfo.new(0.2), {ImageColor3 = NexusUI.CurrentTheme.Accent}):Play()
@@ -825,7 +551,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
         TweenService:Create(toggleBtn, TweenInfo.new(0.2), {ImageColor3 = Color3.new(1,1,1)}):Play()
     end)
 
-    -- Frame principal (inicialmente invisível se loading estiver ativo)
+    -- Frame principal
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -834,12 +560,12 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     mainFrame.BackgroundColor3 = NexusUI.CurrentTheme.Background
     mainFrame.Parent = NexusUI.ScreenGui
     mainFrame.ClipsDescendants = true
-    mainFrame.Visible = enableLoading and false or true
+    mainFrame.Visible = true
     AddCorner(mainFrame, 12)
     AddStroke(mainFrame, NexusUI.CurrentTheme.Accent, 2)
     AddShadow(mainFrame, 20, Color3.new(0,0,0), 0.6)
 
-    -- Título
+    -- Título (topo)
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "TitleLabel"
     titleLabel.Size = UDim2.new(1, 0, 0, 30)
@@ -852,7 +578,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     titleLabel.TextXAlignment = Enum.TextXAlignment.Center
     titleLabel.Parent = mainFrame
 
-    -- Abas
+    -- Container das abas (com scroll horizontal)
     local tabContainer = Instance.new("Frame")
     tabContainer.Name = "TabContainer"
     tabContainer.Size = UDim2.new(1, 0, 0, 35)
@@ -873,7 +599,7 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     tabScroll.ScrollingDirection = Enum.ScrollingDirection.X
     tabScroll.Parent = tabContainer
 
-    -- Conteúdo
+    -- Container do conteúdo
     local content = Instance.new("Frame")
     content.Name = "ContentContainer"
     content.Size = UDim2.new(1, -10, 1, -75)
@@ -882,20 +608,17 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     content.ClipsDescendants = true
     content.Parent = mainFrame
 
+    -- Frame para animação de slide entre abas
     local contentSlide = Instance.new("Frame")
     contentSlide.Name = "ContentSlide"
     contentSlide.Size = UDim2.new(1, 0, 1, 0)
     contentSlide.BackgroundTransparency = 1
     contentSlide.Parent = content
 
-    -- Restaurar posições
+    -- Restaurar posições salvas
     if NexusUI.SavedPositions["MainFrame"] then
         local p = NexusUI.SavedPositions["MainFrame"]
         mainFrame.Position = UDim2.new(p[1], p[2], p[3], p[4])
-    end
-    if NexusUI.SavedPositions["ToggleButton"] then
-        local p = NexusUI.SavedPositions["ToggleButton"]
-        toggleBtn.Position = UDim2.new(p[1], p[2], p[3], p[4])
     end
 
     NexusUI.MainFrame = mainFrame
@@ -922,14 +645,11 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
         end
     end)
 
-    -- Animação de entrada (se não houver loading)
-    if not enableLoading then
-        mainFrame.Size = UDim2.new(0, 0, 0, 0)
-        TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 500, 0, 350)
-        }):Play()
-        mainFrame.Visible = true
-    end
+    -- Animação de entrada
+    mainFrame.Size = UDim2.new(0, 0, 0, 0)
+    TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 500, 0, 350)
+    }):Play()
 
     ApplyThemeToUI()
 
@@ -971,24 +691,6 @@ function NexusUI.CreateWindow(title, toggleImageId, includeDefaultSettings, conf
     end
 
     ReorderTabs()
-
-    -- Se loading estiver ativo, cria o overlay e executa a sequência
-    if enableLoading then
-        mainFrame.Visible = false
-        CreateLoadingOverlay(NexusUI.ScreenGui)
-        NexusUI.LoadingActive = true
-
-        task.spawn(function()
-            RunLoadingSequence(function()
-                mainFrame.Visible = true
-                mainFrame.Size = UDim2.new(0, 0, 0, 0)
-                TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                    Size = UDim2.new(0, 500, 0, 350)
-                }):Play()
-                NexusUI.Notify("NEXUS UI", "Carregado com sucesso! 🚀", 3)
-            end)
-        end)
-    end
 
     return NexusUI
 end
@@ -1719,22 +1421,6 @@ function NexusUI.Destroy()
     end
     NexusUI.Tabs = {}
     NexusUI.SavedPositions = {}
-    NexusUI.LoadingFrame = nil
-    NexusUI.LoadingData = nil
-    NexusUI.LoadingActive = false
-end
-
--- ============================================================================
--- FUNÇÃO PARA CONFIGURAR A LOADING
--- ============================================================================
-function NexusUI.SetLoadingConfig(config)
-    if config.duration then LibraryConfig.LoadingDuration = config.duration end
-    if config.holdAfter100 then LibraryConfig.HoldAfter100 = config.holdAfter100 end
-    if config.nMoveSpeed then LibraryConfig.N_MoveSpeed = config.nMoveSpeed end
-    if config.linesExpandSpeed then LibraryConfig.LinesExpandSpeed = config.linesExpandSpeed end
-    if config.holdFinalName then LibraryConfig.HoldFinalName = config.holdFinalName end
-    if config.fadeOutSpeed then LibraryConfig.FadeOutSpeed = config.fadeOutSpeed end
-    if config.soundId then LibraryConfig.SoundId = config.soundId end
 end
 
 task.spawn(function()
